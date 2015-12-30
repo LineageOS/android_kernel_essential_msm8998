@@ -1197,13 +1197,13 @@ static int mdss_rotator_config_dnsc_factor(struct mdss_rot_mgr *mgr,
 		}
 		entry->dnsc_factor_w = src_w / dst_w;
 		bit = fls(entry->dnsc_factor_w);
-		if ((entry->dnsc_factor_w & ~BIT(bit - 1)) || (bit > 5)) {
+		if ((entry->dnsc_factor_w & ~BIT(bit - 1)) || (bit > 7)) {
 			ret = -EINVAL;
 			goto dnsc_err;
 		}
 		entry->dnsc_factor_h = src_h / dst_h;
 		bit = fls(entry->dnsc_factor_h);
-		if ((entry->dnsc_factor_h & ~BIT(bit - 1)) || (bit > 5)) {
+		if ((entry->dnsc_factor_h & ~BIT(bit - 1)) || (bit > 7)) {
 			ret = -EINVAL;
 			goto dnsc_err;
 		}
