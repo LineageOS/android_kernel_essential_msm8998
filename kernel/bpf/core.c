@@ -129,14 +129,12 @@ struct bpf_prog *bpf_prog_realloc(struct bpf_prog *fp_old, unsigned int size,
 
 	return fp;
 }
-EXPORT_SYMBOL_GPL(bpf_prog_realloc);
 
 void __bpf_prog_free(struct bpf_prog *fp)
 {
 	kfree(fp->aux);
 	vfree(fp);
 }
-EXPORT_SYMBOL_GPL(__bpf_prog_free);
 
 static bool bpf_is_jmp_and_has_target(const struct bpf_insn *insn)
 {
