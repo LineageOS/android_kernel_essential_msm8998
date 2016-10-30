@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 
+#include "msm8998-cpu.dtsi"
 #include <dt-bindings/interrupt-controller/irq.h>
 #include "../qcom/msm8998-pinctrl.dtsi"
 #include "../qcom/msm-smb138x.dtsi"
