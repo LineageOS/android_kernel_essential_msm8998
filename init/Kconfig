@@ -1219,6 +1219,10 @@ config CGROUP_WRITEBACK
 	depends on MEMCG && BLK_CGROUP
 	default y
 
+config SOCK_CGROUP_DATA
+	bool
+	default n
+
 endif # CGROUPS
 
 config SCHED_HMP
