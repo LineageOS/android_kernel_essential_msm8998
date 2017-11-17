@@ -1789,7 +1789,11 @@ static int32_t msm_actuator_power_up(struct msm_actuator_ctrl_t *a_ctrl)
 	}
 
 	/* VREG needs some delay to power up */
+#ifdef CONFIG_BOARD_MATA
+	usleep_range(12000, 14000);
+#else
 	usleep_range(2000, 3000);
+#endif
 	a_ctrl->actuator_state = ACT_ENABLE_STATE;
 
 	CDBG("Exit\n");

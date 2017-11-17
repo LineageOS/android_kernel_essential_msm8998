@@ -50,7 +50,11 @@ static void xhci_plat_quirks(struct device *dev, struct xhci_hcd *xhci)
 
 	if ((node && of_property_read_bool(node, "usb3-lpm-capable")) ||
 			(pdata && pdata->usb3_lpm_capable))
+#ifdef CONFIG_ESSENTIAL_SIBEAM
+		xhci->quirks |= XHCI_LPM_SUPPORT | XHCI_SIBEAM_QUIRK;
+#else
 		xhci->quirks |= XHCI_LPM_SUPPORT;
+#endif
 }
 
 /* called during probe() after chip reset completes */
