@@ -315,8 +315,6 @@ struct mdss_dsi_data {
 	 * mutex, clocks, regulator information, setup information
 	 */
 	struct dsi_shared_data *shared_data;
-	u32 *dbg_bus;
-	int dbg_bus_size;
 };
 
 /*
@@ -389,6 +387,8 @@ struct dsi_err_container {
 	u32 err_cnt;
 	u32 err_time_delta;
 	u32 max_err_index;
+	u32 dsi_ack_err_cnt;
+	u32 dsi_ack_err_status;
 
 	u32 index;
 	s64 err_time[MAX_ERR_INDEX];
@@ -707,9 +707,6 @@ void mdss_dsi_cfg_lane_ctrl(struct mdss_dsi_ctrl_pdata *ctrl,
 void mdss_dsi_set_reg(struct mdss_dsi_ctrl_pdata *ctrl, int off,
 	u32 mask, u32 val);
 int mdss_dsi_phy_pll_reset_status(struct mdss_dsi_ctrl_pdata *ctrl);
-int mdss_dsi_check_panel_status(struct mdss_dsi_ctrl_pdata *ctrl, void *arg);
-
-void mdss_dsi_debug_bus_init(struct mdss_dsi_data *sdata);
 
 static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 {

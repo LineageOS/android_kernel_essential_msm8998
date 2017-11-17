@@ -432,6 +432,22 @@ static int uvc_parse_format(struct uvc_device *dev,
 		ftype = UVC_VS_FRAME_MJPEG;
 		break;
 
+	case UVC_VS_FORMAT_H264:
+		if (buflen < 11) {
+			uvc_trace(UVC_TRACE_DESCR, "device %d videostreaming "
+			       "interface %d FORMAT error\n",
+			       dev->udev->devnum,
+			       alts->desc.bInterfaceNumber);
+			return -EINVAL;
+		}
+
+		strlcpy(format->name, "H.264", sizeof format->name);
+		format->fcc = V4L2_PIX_FMT_H264;
+		format->flags = UVC_FMT_FLAG_COMPRESSED;
+		format->bpp = 0;
+		ftype = UVC_VS_FRAME_H264;
+		break;
+
 	case UVC_VS_FORMAT_DV:
 		if (buflen < 9) {
 			uvc_trace(UVC_TRACE_DESCR, "device %d videostreaming "
@@ -499,9 +515,11 @@ static int uvc_parse_format(struct uvc_device *dev,
 	while (buflen > 2 && buffer[1] == USB_DT_CS_INTERFACE &&
 	       buffer[2] == ftype) {
 		frame = &format->frame[format->nframes];
-		if (ftype != UVC_VS_FRAME_FRAME_BASED)
+		if (ftype == UVC_VS_FRAME_H264)			// H.264
+			n = buflen > 43 ? buffer[43] : 0;
+		else if (ftype != UVC_VS_FRAME_FRAME_BASED)	// MJPEG
 			n = buflen > 25 ? buffer[25] : 0;
-		else
+		else						// FRAME
 			n = buflen > 21 ? buffer[21] : 0;
 
 		n = n ? n : 3;
@@ -514,13 +532,28 @@ static int uvc_parse_format(struct uvc_device *dev,
 		}
 
 		frame->bFrameIndex = buffer[3];
-		frame->bmCapabilities = buffer[4];
-		frame->wWidth = get_unaligned_le16(&buffer[5])
-			      * width_multiplier;
-		frame->wHeight = get_unaligned_le16(&buffer[7]);
-		frame->dwMinBitRate = get_unaligned_le32(&buffer[9]);
-		frame->dwMaxBitRate = get_unaligned_le32(&buffer[13]);
-		if (ftype != UVC_VS_FRAME_FRAME_BASED) {
+		if (ftype == UVC_VS_FRAME_H264) {
+			frame->bmCapabilities = buffer[21];
+			frame->wWidth = get_unaligned_le16(&buffer[4])
+				      * width_multiplier;
+			frame->wHeight = get_unaligned_le16(&buffer[6]);
+			frame->dwMinBitRate = get_unaligned_le32(&buffer[31]);
+			frame->dwMaxBitRate = get_unaligned_le32(&buffer[35]);
+		} else {
+			frame->bmCapabilities = buffer[4];
+			frame->wWidth = get_unaligned_le16(&buffer[5])
+				      * width_multiplier;
+			frame->wHeight = get_unaligned_le16(&buffer[7]);
+			frame->dwMinBitRate = get_unaligned_le32(&buffer[9]);
+			frame->dwMaxBitRate = get_unaligned_le32(&buffer[13]);
+		}
+
+		if (ftype == UVC_VS_FRAME_H264) {
+			frame->dwMaxVideoFrameBufferSize = 0;
+			frame->dwDefaultFrameInterval =
+				get_unaligned_le32(&buffer[39]);
+			frame->bFrameIntervalType = buffer[43];
+		} else if (ftype != UVC_VS_FRAME_FRAME_BASED) {
 			frame->dwMaxVideoFrameBufferSize =
 				get_unaligned_le32(&buffer[17]);
 			frame->dwDefaultFrameInterval =
@@ -552,7 +585,10 @@ static int uvc_parse_format(struct uvc_device *dev,
 		 * some other divisions by zero that could happen.
 		 */
 		for (i = 0; i < n; ++i) {
-			interval = get_unaligned_le32(&buffer[26+4*i]);
+			if (ftype == UVC_VS_FRAME_H264)
+				interval = get_unaligned_le32(&buffer[44+4*i]);
+			else
+				interval = get_unaligned_le32(&buffer[26+4*i]);
 			*(*intervals)++ = interval ? interval : 1;
 		}
 
@@ -740,6 +776,7 @@ static int uvc_parse_streaming(struct uvc_device *dev,
 		switch (_buffer[2]) {
 		case UVC_VS_FORMAT_UNCOMPRESSED:
 		case UVC_VS_FORMAT_MJPEG:
+		case UVC_VS_FORMAT_H264:
 		case UVC_VS_FORMAT_FRAME_BASED:
 			nformats++;
 			break;
@@ -763,6 +800,7 @@ static int uvc_parse_streaming(struct uvc_device *dev,
 
 		case UVC_VS_FRAME_UNCOMPRESSED:
 		case UVC_VS_FRAME_MJPEG:
+		case UVC_VS_FRAME_H264:
 			nframes++;
 			if (_buflen > 25)
 				nintervals += _buffer[25] ? _buffer[25] : 3;
@@ -805,6 +843,7 @@ static int uvc_parse_streaming(struct uvc_device *dev,
 		switch (buffer[2]) {
 		case UVC_VS_FORMAT_UNCOMPRESSED:
 		case UVC_VS_FORMAT_MJPEG:
+		case UVC_VS_FORMAT_H264:
 		case UVC_VS_FORMAT_DV:
 		case UVC_VS_FORMAT_FRAME_BASED:
 			format->frame = frame;
@@ -1671,13 +1710,6 @@ static void uvc_delete(struct uvc_device *dev)
 	usb_put_intf(dev->intf);
 	usb_put_dev(dev->udev);
 
-	if (dev->vdev.dev)
-		v4l2_device_unregister(&dev->vdev);
-#ifdef CONFIG_MEDIA_CONTROLLER
-	if (media_devnode_is_registered(&dev->mdev.devnode))
-		media_device_unregister(&dev->mdev);
-#endif
-
 	list_for_each_safe(p, n, &dev->chains) {
 		struct uvc_video_chain *chain;
 		chain = list_entry(p, struct uvc_video_chain, list);
@@ -1742,6 +1774,14 @@ static void uvc_unregister_video(struct uvc_device *dev)
 		uvc_debugfs_cleanup_stream(stream);
 	}
 
+	uvc_status_unregister(dev);
+	if (dev->vdev.dev)
+		v4l2_device_unregister(&dev->vdev);
+#ifdef CONFIG_MEDIA_CONTROLLER
+	if (media_devnode_is_registered(&dev->mdev.devnode))
+		media_device_unregister(&dev->mdev);
+#endif
+
 	/* Decrement the stream count and call uvc_delete explicitly if there
 	 * are no stream left.
 	 */
@@ -1792,7 +1832,10 @@ static int uvc_register_video(struct uvc_device *dev,
 	 */
 	video_set_drvdata(vdev, stream);
 
-	ret = video_register_device(vdev, VFL_TYPE_GRABBER, -1);
+	if (strcmp(dev->udev->product, "neko") == 0)
+		ret = video_register_device(vdev, VFL_TYPE_NEKO, -1);
+	else
+		ret = video_register_device(vdev, VFL_TYPE_GRABBER, -1);
 	if (ret < 0) {
 		uvc_printk(KERN_ERR, "Failed to register video device (%d).\n",
 			   ret);
@@ -2560,7 +2603,8 @@ static struct usb_device_id uvc_ids[] = {
 	  .bInterfaceProtocol	= 0,
 	  .driver_info		= UVC_QUIRK_FORCE_Y8 },
 	/* Generic USB Video Class */
-	{ USB_INTERFACE_INFO(USB_CLASS_VIDEO, 1, 0) },
+	{ USB_INTERFACE_INFO(USB_CLASS_VIDEO, 1, UVC_PC_PROTOCOL_UNDEFINED) },
+	{ USB_INTERFACE_INFO(USB_CLASS_VIDEO, 1, UVC_PC_PROTOCOL_15) },
 	{}
 };
 

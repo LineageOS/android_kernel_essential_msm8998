@@ -764,7 +764,6 @@ static int dwc3_msm_ep_queue(struct usb_ep *ep,
 	return 0;
 
 err:
-	list_del(&req_complete->list_item);
 	spin_unlock_irqrestore(&dwc->lock, flags);
 	kfree(req_complete);
 	return ret;
@@ -3597,9 +3596,25 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA)
 		}
 	}
 
-	power_supply_get_property(mdwc->usb_psy, POWER_SUPPLY_PROP_TYPE, &pval);
+	power_supply_get_property(mdwc->usb_psy,
+			POWER_SUPPLY_PROP_REAL_TYPE, &pval);
 	if (pval.intval != POWER_SUPPLY_TYPE_USB)
 		return 0;
+
+	/* Fix: Type-C to Type-C 5V3A PCI-E will need provide 1.5/3A charging current */
+	{
+		power_supply_get_property(mdwc->usb_psy, POWER_SUPPLY_PROP_TYPEC_MODE, &pval);
+
+		dev_info(mdwc->dev, "BEFORE Avail curr from USB = %u, type_c_mode = %d\n", mA, pval.intval);
+
+		if (pval.intval == POWER_SUPPLY_TYPEC_SOURCE_MEDIUM /* Rp 1.5A */)
+			mA = 1500;
+
+		if (pval.intval == POWER_SUPPLY_TYPEC_SOURCE_HIGH /* Rp 3A */)
+			mA = 3000;
+
+		 dev_info(mdwc->dev, "AFTER Avail curr from USB = %u, type_c_mode = %d\n", mA, pval.intval);
+	}
 
 	dev_info(mdwc->dev, "Avail curr from USB = %u\n", mA);
 

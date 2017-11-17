@@ -586,6 +586,7 @@ struct mdss_mdp_ctl {
 	struct mdss_mdp_avr_info avr_info;
 	bool commit_in_progress;
 	struct mutex ds_lock;
+	bool need_vsync_on;
 };
 
 struct mdss_mdp_mixer {
@@ -1785,7 +1786,7 @@ void mdss_mdp_ctl_notifier_register(struct mdss_mdp_ctl *ctl,
 void mdss_mdp_ctl_notifier_unregister(struct mdss_mdp_ctl *ctl,
 	struct notifier_block *notifier);
 u32 mdss_mdp_ctl_perf_get_transaction_status(struct mdss_mdp_ctl *ctl);
-u32 apply_comp_ratio_factor(u32 quota, struct mdss_mdp_format_params *fmt,
+u64 apply_comp_ratio_factor(u64 quota, struct mdss_mdp_format_params *fmt,
 	struct mult_factor *factor);
 
 int mdss_mdp_scan_pipes(void);
@@ -2022,6 +2023,8 @@ void mdss_mdp_disable_hw_irq(struct mdss_data_type *mdata);
 void mdss_mdp_set_supported_formats(struct mdss_data_type *mdata);
 int mdss_mdp_dest_scaler_setup_locked(struct mdss_mdp_mixer *mixer);
 void *mdss_mdp_intf_get_ctx_base(struct mdss_mdp_ctl *ctl, int intf_num);
+
+int mdss_mdp_mixer_get_hw_num(struct mdss_mdp_mixer *mixer);
 
 #ifdef CONFIG_FB_MSM_MDP_NONE
 struct mdss_data_type *mdss_mdp_get_mdata(void)

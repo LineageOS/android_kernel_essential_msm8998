@@ -548,15 +548,17 @@ static int bt_power_populate_dt_pinfo(struct platform_device *pdev)
 
 	BT_PWR_DBG("");
 
-	if (!bt_power_pdata)
+	if (!bt_power_pdata) {
 		return -ENOMEM;
+	}
 
 	if (pdev->dev.of_node) {
 		bt_power_pdata->bt_gpio_sys_rst =
 			of_get_named_gpio(pdev->dev.of_node,
 						"qca,bt-reset-gpio", 0);
-		if (bt_power_pdata->bt_gpio_sys_rst < 0)
+		if (bt_power_pdata->bt_gpio_sys_rst < 0) {
 			BT_PWR_ERR("bt-reset-gpio not provided in device tree");
+		}
 
 		rc = bt_dt_parse_vreg_info(&pdev->dev,
 					&bt_power_pdata->bt_vdd_core,

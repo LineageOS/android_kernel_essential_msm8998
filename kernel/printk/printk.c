@@ -133,6 +133,19 @@ static int __down_trylock_console_sem(unsigned long ip)
  */
 static int console_locked, console_suspended;
 
+/* for BBS start */
+#define __LOG_BBS_BUF_LEN 1024
+DECLARE_WAIT_QUEUE_HEAD(bbs_log_wait);
+static DEFINE_RAW_SPINLOCK(bbs_logbuf_lock);
+static unsigned log_bbs_start = 0;	/* Index into log_bbs_start: next char to be read by syslog() */
+static unsigned log_bbs_end=0;	/* Index into log_bbs_end: most-recently-written-char + 1 */
+static char __log_bbs_buf[__LOG_BBS_BUF_LEN];
+static char *log_bbs_buf = __log_bbs_buf;
+static int log_bbs_buf_len = __LOG_BBS_BUF_LEN;
+#define LOG_BBS_BUF_MASK (log_bbs_buf_len-1)
+#define LOG_BBS_BUF(idx) (log_bbs_buf[(idx) & LOG_BBS_BUF_MASK])
+/* for BBS end */
+
 /*
  * If exclusive_console is non-NULL then only this console is to be printed to.
  */
@@ -486,6 +499,10 @@ int dmesg_restrict = IS_ENABLED(CONFIG_SECURITY_DMESG_RESTRICT);
 
 static int syslog_action_restricted(int type)
 {
+    /* for BBS start */
+    if (type == SYSLOG_ACTION_GET_KERNEL_BUFFER)
+        return 0;
+    /* for BBS end */
 	if (dmesg_restrict)
 		return 1;
 	/*
@@ -1303,6 +1320,10 @@ int do_syslog(int type, char __user *buf, int len, int source)
 	bool clear = false;
 	static int saved_console_loglevel = LOGLEVEL_DEFAULT;
 	int error;
+    /* for BBS start */
+	unsigned i;
+	char c;
+    /* for BBS end */
 
 	error = check_syslog_permissions(type, source);
 	if (error)
@@ -1416,6 +1437,43 @@ int do_syslog(int type, char __user *buf, int len, int source)
 	case SYSLOG_ACTION_SIZE_BUFFER:
 		error = log_buf_len;
 		break;
+    /* for BBS start */
+	case SYSLOG_ACTION_GET_KERNEL_BUFFER:
+        error = -EINVAL;
+		if (!buf || len < 0)
+			goto out;
+		error = 0;
+		if (!len)
+			goto out;
+		if (!access_ok(VERIFY_WRITE, buf, len)) {
+			error = -EFAULT;
+			goto out;
+		}
+
+		error = wait_event_interruptible(bbs_log_wait,
+							(log_bbs_start - log_bbs_end));
+		if (error)
+			goto out;
+		i = 0;
+
+		raw_spin_lock_irq(&bbs_logbuf_lock);
+
+		while (!error&&(log_bbs_start != log_bbs_end)&&i < len) {
+			c = LOG_BBS_BUF(log_bbs_start);
+			log_bbs_start++;
+			raw_spin_unlock_irq(&bbs_logbuf_lock);
+			error = __put_user(c,buf);
+			buf++;
+			i++;
+			cond_resched();
+			raw_spin_lock_irq(&bbs_logbuf_lock);
+		}
+		raw_spin_unlock_irq(&bbs_logbuf_lock);
+
+		if (!error)
+			error = i;
+		break;
+    /* for BBS end */
 	default:
 		error = -EINVAL;
 		break;

@@ -870,7 +870,7 @@ static void unregister_client_adhoc(uint32_t cl)
 
 	curr = client->curr;
 	if ((curr < 0) || (curr >= pdata->num_usecases)) {
-		MSM_BUS_ERR("Invalid index Defaulting curr to 0");
+		MSM_BUS_ERR("Invalid index Defaulting curr to 0\n");
 		curr = 0;
 	}
 

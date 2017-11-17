@@ -661,6 +661,7 @@ static int add_as_linear_device(struct dm_target *ti, char *dev)
 static int android_verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 {
 	dev_t uninitialized_var(dev);
+	static const char logging[] = "logging";
 	struct android_metadata *metadata = NULL;
 	int err = 0, i, mode;
 	char *key_id, *table_ptr, dummy, *target_device,
@@ -863,6 +864,10 @@ static int android_verity_ctr(struct dm_target *ti, unsigned argc, char **argv)
 	else {
 		target_added = true;
 		DMINFO("android-verity mounted as verity target");
+		if (!strncmp(veritymode, logging, sizeof(logging) - 1)) {
+			DMINFO("Currently logging - Reboot and enforce");
+			kernel_restart("dm-verity enforcing");
+		}
 	}
 
 free_metadata:

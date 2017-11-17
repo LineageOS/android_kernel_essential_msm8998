@@ -1893,7 +1893,7 @@ static struct usb_driver acm_driver = {
 #ifdef CONFIG_PM
 	.supports_autosuspend = 1,
 #endif
-	.disable_hub_initiated_lpm = 1,
+	.disable_hub_initiated_lpm = 0,
 };
 
 /*

@@ -178,6 +178,9 @@ struct subsys_device {
 	struct list_head list;
 };
 
+#define MAX_SSR_REASON_LEN 81U
+bool disable_MDM_RamDump;
+
 static struct subsys_device *to_subsys(struct device *d)
 {
 	return container_of(d, struct subsys_device, dev);
@@ -521,8 +524,13 @@ static void notify_each_subsys_device(struct subsys_device **list,
 				dev->track.state == SUBSYS_ONLINE)
 			send_sysmon_notif(dev);
 
-		notif_data.crashed = subsys_get_crash_status(dev);
-		notif_data.enable_ramdump = is_ramdump_enabled(dev);
+    notif_data.crashed = subsys_get_crash_status(dev);
+
+    if (((strcmp(dev->desc->name, "modem") == 0) && disable_MDM_RamDump) || (!(strcmp(dev->desc->name, "modem") == 0)))
+			notif_data.enable_ramdump = 0;
+		else
+                 notif_data.enable_ramdump = is_ramdump_enabled(dev);
+
 		notif_data.enable_mini_ramdumps = enable_mini_ramdumps;
 		notif_data.no_auth = dev->desc->no_auth;
 		notif_data.pdev = pdev;
@@ -608,7 +616,7 @@ static void subsystem_ramdump(struct subsys_device *dev, void *data)
 {
 	const char *name = dev->desc->name;
 
-	if (dev->desc->ramdump)
+	if (dev->desc->ramdump && ((strcmp(name, "modem") == 0) && !disable_MDM_RamDump))
 		if (dev->desc->ramdump(is_ramdump_enabled(dev), dev->desc) < 0)
 			pr_warn("%s[%s:%d]: Ramdump failed.\n",
 				name, current->comm, current->pid);

@@ -525,6 +525,7 @@ int __ipa_commit_rt_v1_1(enum ipa_ip_type ip)
 	struct ipa_ip_v6_routing_init *v6;
 	u16 avail;
 	u16 size;
+	gfp_t flag = GFP_KERNEL | (ipa_ctx->use_dma_zone ? GFP_DMA : 0);
 
 	mem = kmalloc(sizeof(struct ipa_mem_buffer), GFP_KERNEL);
 	if (!mem) {
@@ -541,7 +542,7 @@ int __ipa_commit_rt_v1_1(enum ipa_ip_type ip)
 			IPA_MEM_PART(v6_rt_size_ddr);
 		size = sizeof(struct ipa_ip_v6_routing_init);
 	}
-	cmd = kmalloc(size, GFP_KERNEL);
+	cmd = kmalloc(size, flag);
 	if (!cmd) {
 		IPAERR("failed to alloc immediate command object\n");
 		goto fail_alloc_cmd;
@@ -856,12 +857,16 @@ int ipa2_query_rt_index(struct ipa_ioc_get_rt_tbl_indx *in)
 		return -EINVAL;
 	}
 
+	mutex_lock(&ipa_ctx->lock);
 	/* check if this table exists */
 	entry = __ipa_find_rt_tbl(in->ip, in->name);
-	if (!entry)
+	if (!entry) {
+		mutex_unlock(&ipa_ctx->lock);
 		return -EFAULT;
+	}
 
 	in->idx  = entry->idx;
+	mutex_unlock(&ipa_ctx->lock);
 	return 0;
 }
 

@@ -1439,6 +1439,70 @@ static const struct file_operations ufsdbg_reset_controller = {
 	.write		= ufsdbg_reset_controller_write,
 };
 
+#ifdef CONFIG_ESSENTIAL_UFS
+static int ufsdbg_dump_device_health_desc_show(struct seq_file *file, void *data)
+{
+	int err = 0;
+	int buff_len = QUERY_DESC_DEVICE_HEALTH_MAX_SIZE;
+	u8 desc_buf[QUERY_DESC_DEVICE_HEALTH_MAX_SIZE];
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+
+	struct desc_field_offset device_health_desc_field_name[] = {
+		{"bLength",		0x00, BYTE},
+		{"bDescriptorType",	0x01, BYTE},
+		{"bPreEOLInfo",		0x02, BYTE},
+		{"bDeviceLifeTimeEstA",	0x03, BYTE},
+		{"bDeviceLifeTimeEstB",	0x04, BYTE},
+	};
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_device_health_desc(hba, desc_buf, buff_len);
+	pm_runtime_put_sync(hba->dev);
+
+	if (!err) {
+		int i;
+		struct desc_field_offset *tmp;
+		for (i = 0; i < ARRAY_SIZE(device_health_desc_field_name); ++i) {
+			tmp = &device_health_desc_field_name[i];
+
+			if (tmp->width_byte == BYTE) {
+				seq_printf(file,
+					   "Device Health Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					   tmp->offset,
+					   tmp->name,
+					   (u8)desc_buf[tmp->offset]);
+			} else if (tmp->width_byte == WORD) {
+				seq_printf(file,
+					   "Device Health Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					   tmp->offset,
+					   tmp->name,
+					   *(u16 *)&desc_buf[tmp->offset]);
+			} else {
+				seq_printf(file,
+				"Device Health Descriptor[offset 0x%x]: %s. Wrong Width = %d",
+				tmp->offset, tmp->name, tmp->width_byte);
+			}
+		}
+	} else {
+		seq_printf(file, "Reading Device Descriptor failed. err = %d\n",
+			   err);
+	}
+
+	return err;
+}
+
+static int ufsdbg_dump_device_health_desc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			   ufsdbg_dump_device_health_desc_show, inode->i_private);
+}
+
+static const struct file_operations dump_device_health_desc = {
+	.open		= ufsdbg_dump_device_health_desc_open,
+	.read		= seq_read,
+};
+#endif
+
 static int ufsdbg_clear_err_state(void *data, u64 val)
 {
 	struct ufs_hba *hba = data;
@@ -1561,9 +1625,15 @@ void ufsdbg_add_debugfs(struct ufs_hba *hba)
 	}
 
 	hba->debugfs_files.dump_dev_desc =
+#ifdef CONFIG_ESSENTIAL_UFS
+		debugfs_create_file("dump_device_desc", S_IRUGO,
+				    hba->debugfs_files.debugfs_root, hba,
+				    &ufsdbg_dump_device_desc);
+#else
 		debugfs_create_file("dump_device_desc", S_IRUSR,
 				    hba->debugfs_files.debugfs_root, hba,
 				    &ufsdbg_dump_device_desc);
+#endif
 	if (!hba->debugfs_files.dump_dev_desc) {
 		dev_err(hba->dev,
 			"%s:  NULL dump_device_desc file, exiting", __func__);
@@ -1644,6 +1714,19 @@ void ufsdbg_add_debugfs(struct ufs_hba *hba)
 		     "%s: failed create err_state debugfs entry", __func__);
 		goto err;
 	}
+
+#ifdef CONFIG_ESSENTIAL_UFS
+	hba->debugfs_files.dump_device_health_desc =
+		debugfs_create_file("dump_device_health_desc", S_IRUGO,
+			hba->debugfs_files.debugfs_root, hba,
+			&dump_device_health_desc);
+	if (!hba->debugfs_files.dump_device_health_desc) {
+		dev_err(hba->dev,
+			"%s: failed create dump_device_health_desc debugfs entry",
+				__func__);
+		goto err;
+	}
+#endif
 
 	ufsdbg_setup_fault_injection(hba);
 

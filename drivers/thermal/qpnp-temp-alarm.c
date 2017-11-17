@@ -284,8 +284,6 @@ static int qpnp_tz_get_temp_no_adc(struct thermal_zone_device *thermal,
 		return -EINVAL;
 
 	rc = qpnp_tm_update_temp_no_adc(chip);
-	if (rc < 0)
-		return rc;
 
 	*temperature = chip->temperature;
 

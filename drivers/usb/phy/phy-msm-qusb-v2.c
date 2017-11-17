@@ -364,7 +364,8 @@ static int qusb_phy_update_dpdm(struct usb_phy *phy, int value)
 
 	return ret;
 }
-
+#if 0
+/* if efuse_reg exist, This function will override tune1 register, bacause we read reg from dtsi, so we need remove it */
 static void qusb_phy_get_tune1_param(struct qusb_phy *qphy)
 {
 	u8 reg;
@@ -394,7 +395,7 @@ static void qusb_phy_get_tune1_param(struct qusb_phy *qphy)
 	}
 	qphy->tune_val = reg;
 }
-
+#endif
 static void qusb_phy_write_seq(void __iomem *base, u32 *seq, int cnt,
 		unsigned long delay)
 {
@@ -498,6 +499,8 @@ static int qusb_phy_init(struct usb_phy *phy)
 	if (qphy->qusb_phy_init_seq)
 		qusb_phy_write_seq(qphy->base, qphy->qusb_phy_init_seq,
 				qphy->init_seq_len, 0);
+#if 0
+/* if efuse_reg exist, This function will override tune1 register, bacause we read reg from dtsi, so we need remove it */
 	if (qphy->efuse_reg) {
 		if (!qphy->tune_val)
 			qusb_phy_get_tune1_param(qphy);
@@ -507,7 +510,7 @@ static int qusb_phy_init(struct usb_phy *phy)
 		writel_relaxed(qphy->tune_val,
 				qphy->base + QUSB2PHY_PORT_TUNE1);
 	}
-
+#endif
 	/* If phy_tune1 modparam set, override tune1 value */
 	if (phy_tune1) {
 		pr_debug("%s(): (modparam) TUNE1 val:0x%02x\n",

@@ -14,6 +14,9 @@
 #include "ufshcd.h"
 #include "ufs_quirks.h"
 
+#ifdef CONFIG_ESSENTIAL_UFS
+#include <essential/essential_ufs.h>
+#endif
 
 static struct ufs_card_fix ufs_fixups[] = {
 	/* UFS cards deviations table */
@@ -55,6 +58,13 @@ static int ufs_get_device_info(struct ufs_hba *hba,
 	u8 model_index;
 	u8 str_desc_buf[QUERY_DESC_STRING_MAX_SIZE + 1];
 	u8 desc_buf[QUERY_DESC_DEVICE_MAX_SIZE];
+#ifdef CONFIG_ESSENTIAL_UFS
+	u8 geometry_desc_buf[QUERY_DESC_GEOMETRY_MAZ_SIZE] = {0};
+	char buf[ESSENTIAL_UFSINFO_SIZE] = {0};
+	u64 qTotalRawDeviceCapacity = 0;
+	u64 max_sector_count = 0;
+	u64 total_sector = 0;
+#endif
 
 	err = ufshcd_read_device_desc(hba, desc_buf,
 					QUERY_DESC_DEVICE_MAX_SIZE);
@@ -82,6 +92,36 @@ static int ufs_get_device_info(struct ufs_hba *hba,
 		      MAX_MODEL_LEN));
 	/* Null terminate the model string */
 	card_data->model[MAX_MODEL_LEN] = '\0';
+
+#ifdef CONFIG_ESSENTIAL_UFS
+	ufshcd_read_geometry_desc(hba, geometry_desc_buf, QUERY_DESC_GEOMETRY_MAZ_SIZE);
+
+	/* endian transform */
+	qTotalRawDeviceCapacity = (u64)geometry_desc_buf[4] << 56 |
+				  (u64)geometry_desc_buf[5] << 48 |
+				  (u64)geometry_desc_buf[6] << 40 |
+				  (u64)geometry_desc_buf[7] << 32 |
+				  (u64)geometry_desc_buf[8] << 24 |
+				  (u64)geometry_desc_buf[9] << 16 |
+				  (u64)geometry_desc_buf[10] << 8 |
+				  (u64)geometry_desc_buf[11];
+
+	dev_info(hba->dev, "qTotalRawDeviceCapacity: %llu\n", qTotalRawDeviceCapacity);
+
+	max_sector_count = 1 << 21; /* 1GB --> 1024*1024*2 sector */
+	total_sector = qTotalRawDeviceCapacity;
+	while (max_sector_count < total_sector) {
+		max_sector_count = max_sector_count << 1;
+	}
+
+	switch (card_data->wmanufacturerid) {
+		case UFS_VENDOR_TOSHIBA: sprintf(buf, "Toshiba"); break;
+		case UFS_VENDOR_SAMSUNG: sprintf(buf, "Samsung"); break;
+		case UFS_VENDOR_HYNIX: sprintf(buf, "Hynix"); break;
+		default: sprintf(buf, "Unknown"); break;
+	}
+	sprintf(buf, "%s 0x%x %lluG 0x00\n", buf, hba->ufs_version, (max_sector_count >> 21));
+#endif
 
 out:
 	return err;

@@ -154,11 +154,15 @@
 			io-channels = <&pmi8998_rradc 8>,
 				      <&pmi8998_rradc 10>,
 				      <&pmi8998_rradc 3>,
-				      <&pmi8998_rradc 4>;
+				      <&pmi8998_rradc 4>,
+				      <&pmi8998_rradc 5>,
+				      <&pmi8998_rradc 6>;
 			io-channel-names = "charger_temp",
 					   "charger_temp_max",
 					   "usbin_i",
-					   "usbin_v";
+					   "usbin_v",
+					   "dcin_i",
+					   "dcin_v";
 
 			qcom,boost-threshold-ua = <100000>;
 			qcom,wipower-max-uw = <5000000>;

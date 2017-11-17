@@ -157,6 +157,9 @@ enum ufs_desc_max_size {
 	QUERY_DESC_GEOMETRY_MAZ_SIZE		= 0x44,
 	QUERY_DESC_POWER_MAX_SIZE		= 0x62,
 	QUERY_DESC_RFU_MAX_SIZE			= 0x00,
+#ifdef CONFIG_ESSENTIAL_UFS
+	QUERY_DESC_DEVICE_HEALTH_MAX_SIZE	= 0x25,
+#endif
 };
 
 /* Unit descriptor parameters offsets in bytes*/

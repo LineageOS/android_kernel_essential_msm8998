@@ -1,0 +1,14 @@
+#
+# Miscellaneous I2C chip drivers configuration
+#
+# *** DEPRECATED! Do not add new entries! See Makefile ***
+#
+menu "STMiroc range finder support"
+
+config INPUT_VL53L0
+	tristate "STMicro vl53L0 Proximity and ambient light sensing (ALS) module support"
+	default n
+	help
+	  If you say yes here you get support for STMicro vl53L0 Proximity and ambient light sensing (ALS) module.
+
+endmenu

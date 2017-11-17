@@ -1622,6 +1622,7 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 		}
 	}
 
+	dev_set_name(&pon->pdev->dev, "qpnp-power-on");
 	device_init_wakeup(&pon->pdev->dev, 1);
 
 	return rc;

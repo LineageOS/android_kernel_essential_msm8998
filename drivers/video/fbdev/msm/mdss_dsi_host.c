@@ -22,6 +22,7 @@
 #include <linux/kthread.h>
 
 #include <linux/msm-bus.h>
+#include <linux/proc_fs.h>
 
 #include "mdss.h"
 #include "mdss_dsi.h"
@@ -165,7 +166,14 @@ void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	MDSS_XLOG(ctrl->ndx, enable, ctrl->mdp_busy, current->pid,
 		client);
-	if (enable == 0) {
+	/*
+	 * ensure that before going into ecg or turning
+	 * off the clocks, cmd_mdp_busy is not true. During a
+	 * race condition, clocks are turned off and so the
+	 * isr for cmd_mdp_busy does not get cleared in hw.
+	 */
+	if (enable == MDSS_DSI_CLK_OFF ||
+		enable == MDSS_DSI_CLK_EARLY_GATE) {
 		/* need wait before disable */
 		mutex_lock(&ctrl->cmd_mutex);
 		mdss_dsi_cmd_mdp_busy(ctrl);
@@ -1703,7 +1711,9 @@ static int mdss_dsi_cmd_dma_tpg_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	ret = wait_for_completion_timeout(&ctrl->dma_comp,
 				msecs_to_jiffies(DMA_TX_TIMEOUT));
 	if (ret == 0)
+	{
 		ret = -ETIMEDOUT;
+	}
 	else
 		ret = tp->len;
 
@@ -3018,6 +3028,8 @@ bool mdss_dsi_ack_err_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	u32 status;
 	unsigned char *base;
 	bool ret = false;
+	static char page_cnt[32] = {0};
+	static char page_status[32] ={0};
 
 	base = ctrl->ctrl_base;
 
@@ -3041,6 +3053,10 @@ bool mdss_dsi_ack_err_status(struct mdss_dsi_ctrl_pdata *ctrl)
 			return false;
 
 		pr_err("%s: status=%x\n", __func__, status);
+		ctrl->err_cont.dsi_ack_err_cnt++;
+		ctrl->err_cont.dsi_ack_err_status = status;
+		sprintf(page_cnt, "0x%x\n",ctrl->err_cont.dsi_ack_err_cnt);
+		sprintf(page_status, "0x%x\n",ctrl->err_cont.dsi_ack_err_status);
 		ret = true;
 	}
 
