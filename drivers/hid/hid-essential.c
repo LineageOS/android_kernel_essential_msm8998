@@ -123,9 +123,14 @@ err_free:
 static void mata_dongle_remove(struct hid_device *hid)
 {
 	struct mata_dongle_dev *data = hid_get_drvdata(hid);
-
+	if (!data) {
+		pr_err("Invalid params\n");
+		goto end;
+	}
 	switch_dev_unregister(&data->headset_dev);
 	hid_hw_stop(hid);
+end:
+	return;
 }
 
 static const struct hid_device_id mata_dongle_devices[] = {
