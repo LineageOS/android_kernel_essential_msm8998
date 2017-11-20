@@ -36,9 +36,10 @@
 			no-map;
 			reg = <0 0xA0000000 0 0x00800000>;
 		};
-		pstore_region: pstore_region@A0800000 {
+		ramoops_mem: ramoops_mem@A0800000 {
 			compatible = "removed-dma-pool";
 			no-map;
+			label = "ramoops_mem";
 			reg = <0 0xA0800000 0 0x00200000>;
 		};
 		essential_mem: essential_mem@A0A00000 {
@@ -872,6 +873,17 @@
 		pinctrl-0 = <&msm8998_gpio91_default>;
 		pinctrl-1 = <&msm8998_gpio91_active>;
 		pinctrl-2 = <&msm8998_gpio121_default>;
+	};
+
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+		memory-region = <&ramoops_mem>;
+
+		console-size = <0x0 0x00080000>;
+		pmsg-size    = <0x0 0x00040000>;
+		record-size  = <0x0 0x00008000>;
+		ftrace-size  = <0x0 0x00020000>;
 	};
 
 	sound-9335 {
