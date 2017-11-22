@@ -904,7 +904,6 @@ struct cgroup_subsys schedtune_cgrp_subsys = {
 	.cancel_attach  = schedtune_cancel_attach,
 	.legacy_cftypes	= files,
 	.early_init	= 1,
-	.allow_attach	= subsys_cgroup_allow_attach,
 	.attach		= schedtune_attach,
 };
 
