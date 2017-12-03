@@ -16,6 +16,8 @@
 #include "msm8998-pinctrl-mata.dtsi"
 #include "msm8998-camera-sensor-mata.dtsi"
 #include "../qcom/msm8998-mdss-panels.dtsi"
+#include "msm8998-mata-lineage.dtsi"
+
 / {
 	aliases {
 		i2c6 = &i2c_6;
