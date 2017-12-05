@@ -768,6 +768,7 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	return 0;
 }
 
+#ifdef CONFIG_SCHED_HMP
 static void schedtune_attach(struct cgroup_taskset *tset)
 {
 	struct task_struct *task;
@@ -783,6 +784,7 @@ static void schedtune_attach(struct cgroup_taskset *tset)
 	cgroup_taskset_for_each(task, css, tset)
 		sync_cgroup_colocation(task, colocate);
 }
+#endif
 
 static struct cftype files[] = {
 	{
@@ -904,7 +906,9 @@ struct cgroup_subsys schedtune_cgrp_subsys = {
 	.cancel_attach  = schedtune_cancel_attach,
 	.legacy_cftypes	= files,
 	.early_init	= 1,
+#ifdef CONFIG_SCHED_HMP
 	.attach		= schedtune_attach,
+#endif
 };
 
 static inline void
