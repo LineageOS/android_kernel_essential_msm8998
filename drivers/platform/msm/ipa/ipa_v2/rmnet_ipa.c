@@ -411,12 +411,15 @@ int copy_ul_filter_rule_to_ipa(struct ipa_install_fltr_rule_req_msg_v01
 {
 	int i, j;
 
+	/* prevent multi-threads accessing num_q6_rule */
+	mutex_lock(&add_mux_channel_lock);
 	if (rule_req->filter_spec_list_valid == true) {
 		num_q6_rule = rule_req->filter_spec_list_len;
 		IPAWANDBG("Received (%d) install_flt_req\n", num_q6_rule);
 	} else {
 		num_q6_rule = 0;
 		IPAWANERR("got no UL rules from modem\n");
+		mutex_unlock(&add_mux_channel_lock);
 		return -EINVAL;
 	}
 
@@ -610,9 +613,11 @@ failure:
 	num_q6_rule = 0;
 	memset(ipa_qmi_ctx->q6_ul_filter_rule, 0,
 		sizeof(ipa_qmi_ctx->q6_ul_filter_rule));
+	mutex_unlock(&add_mux_channel_lock);
 	return -EINVAL;
 
 success:
+	mutex_unlock(&add_mux_channel_lock);
 	return 0;
 }
 
@@ -643,6 +648,8 @@ static int wwan_add_ul_flt_rule_to_ipa(void)
 		kfree(param);
 		return -ENOMEM;
 	}
+
+	memset(req, 0, sizeof(struct ipa_fltr_installed_notif_req_msg_v01));
 
 	param->commit = 1;
 	param->ep = IPA_CLIENT_APPS_LAN_WAN_PROD;
@@ -1512,8 +1519,8 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 		/*  Get driver name  */
 		case RMNET_IOCTL_GET_DRIVER_NAME:
 			memcpy(&extend_ioctl_data.u.if_name,
-						ipa_netdevs[0]->name,
-							sizeof(IFNAMSIZ));
+						ipa_netdevs[0]->name, IFNAMSIZ);
+			extend_ioctl_data.u.if_name[IFNAMSIZ - 1] = '\0';
 			if (copy_to_user((u8 *)ifr->ifr_ifru.ifru_data,
 					&extend_ioctl_data,
 					sizeof(struct rmnet_ioctl_extended_s)))
@@ -1536,6 +1543,8 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 				mutex_unlock(&add_mux_channel_lock);
 				return -EFAULT;
 			}
+			extend_ioctl_data.u.rmnet_mux_val.vchannel_name
+				[IFNAMSIZ-1] = '\0';
 			IPAWANDBG("ADD_MUX_CHANNEL(%d, name: %s)\n",
 			extend_ioctl_data.u.rmnet_mux_val.mux_id,
 			extend_ioctl_data.u.rmnet_mux_val.vchannel_name);
@@ -1622,9 +1631,12 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 				/* already got Q6 UL filter rules*/
 				if (ipa_qmi_ctx &&
 					ipa_qmi_ctx->modem_cfg_emb_pipe_flt
-					== false)
+					== false) {
+					/* protect num_q6_rule */
+					mutex_lock(&add_mux_channel_lock);
 					rc = wwan_add_ul_flt_rule_to_ipa();
-				else
+					mutex_unlock(&add_mux_channel_lock);
+				} else
 					rc = 0;
 				egress_set = true;
 				if (rc)
@@ -1654,6 +1666,7 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 				sizeof(wan_msg->upstream_ifname);
 			strlcpy(wan_msg->upstream_ifname,
 				extend_ioctl_data.u.if_name, len);
+			wan_msg->upstream_ifname[len - 1] = '\0';
 			memset(&msg_meta, 0, sizeof(struct ipa_msg_meta));
 			msg_meta.msg_type = WAN_XLAT_CONNECT;
 			msg_meta.msg_len = sizeof(struct ipa_wan_msg);
@@ -2634,7 +2647,7 @@ static int rmnet_ipa_set_data_quota_modem(struct wan_ioctl_set_data_quota *data)
 	if (index == MAX_NUM_OF_MUX_CHANNEL) {
 		IPAWANERR("%s is an invalid iface name\n",
 			  data->interface_name);
-		return -EFAULT;
+		return -ENODEV;
 	}
 
 	mux_id = mux_channel[index].mux_id;

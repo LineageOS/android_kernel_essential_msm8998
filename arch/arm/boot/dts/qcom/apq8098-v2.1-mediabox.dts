@@ -101,6 +101,10 @@
 	status = "disabled";
 };
 
+&pcie0 {
+	qcom,boot-option = <0x0>;
+};
+
 &soc {
 	qcom,msm-dai-mi2s {
 		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {
@@ -117,5 +121,13 @@
 					&quat_mi2s_sd2_sleep
 					&quat_mi2s_sd3_sleep>;
 		};
+	};
+
+	ir: ir-receiver {
+		compatible = "gpio-ir-receiver";
+		gpios = <&tlmm 120 1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&ir_int>;
+		linux,rc-map-name = "rc-rc6-p2fp";
 	};
 };
