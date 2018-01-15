@@ -62,7 +62,7 @@ static struct stmvl53l0_module_fn_t stmvl53l0_module_func_tbl = {
 	.deinit = stmvl53l0_exit_i2c,
 	.power_up = stmvl53l0_power_up_i2c,
 	.power_down = stmvl53l0_power_down_i2c,
-	.stmv53l0_cci_power_status = NULL;
+	.query_power_status = NULL,
 };
 #endif
 struct stmvl53l0_module_fn_t *pmodule_func_tbl;
@@ -957,7 +957,8 @@ static void stmvl53l0_work_handler(struct work_struct *work)
 	mutex_lock(&data->work_mutex);
 	/* vl53l0_dbgmsg("Enter\n"); */
 
-	if (pmodule_func_tbl->query_power_status(data->client_object) == 0) {
+	if (pmodule_func_tbl->query_power_status &&
+	    pmodule_func_tbl->query_power_status(data->client_object) == 0) {
 		if (data->enable_ps_sensor == 1) {
 			stmvl53l0_stop(data);
 			data->enable_ps_sensor = 0;
