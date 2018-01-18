@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cab74e2f_d167e225",
+        "filename": "arch/arm64/configs/lineageos_mata_defconfig",
+        "patchSetId": 2
+      },
+      "lineNbr": 3512,
+      "author": {
+        "id": 3671
+      },
+      "writtenOn": "2018-01-18T12:25:13Z",
+      "side": 1,
+      "message": "will this break an otg device with an sdcard reader?",
+      "range": {
+        "startLine": 3512,
+        "startChar": 2,
+        "endLine": 3512,
+        "endChar": 12
+      },
+      "revId": "568a522b0284d89d031f90e943903a33ac44651d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
