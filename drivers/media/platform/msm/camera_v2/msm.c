@@ -747,6 +747,16 @@ static long msm_private_ioctl(struct file *file, void *fh,
 	if (!event_data)
 		return -EINVAL;
 
+	switch (cmd) {
+	case MSM_CAM_V4L2_IOCTL_NOTIFY:
+	case MSM_CAM_V4L2_IOCTL_CMD_ACK:
+	case MSM_CAM_V4L2_IOCTL_NOTIFY_DEBUG:
+	case MSM_CAM_V4L2_IOCTL_NOTIFY_ERROR:
+		break;
+	default:
+		return -ENOTTY;
+	}
+
 	memset(&event, 0, sizeof(struct v4l2_event));
 	session_id = event_data->session_id;
 	stream_id = event_data->stream_id;
@@ -1278,7 +1288,7 @@ static ssize_t write_logsync(struct file *file, const char __user *buf,
 	uint64_t seq_num = 0;
 	int ret;
 
-	if (copy_from_user(lbuf, buf, sizeof(lbuf)))
+	if (copy_from_user(lbuf, buf, sizeof(lbuf) - 1))
 		return -EFAULT;
 
 	ret = sscanf(lbuf, "%llu", &seq_num);
