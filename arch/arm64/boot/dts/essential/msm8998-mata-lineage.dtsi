@@ -16,6 +16,7 @@
 			veritymode = "eio";
 			fstab {
 				vendor {
+					mnt_flags = "ro,barrier=1";
 					fsmgr_flags = "wait,slotselect";
 				};
 			};
