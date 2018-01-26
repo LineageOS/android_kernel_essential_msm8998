@@ -2908,6 +2908,8 @@ int xhci_mem_arm_iommu_create(struct xhci_hcd *xhci)
 		xhci->arm_iommu_mapping = NULL;
 		return rc;
 	}
+
+	return 0;
 }
 
 void xhci_mem_arm_iommu_destroy(struct xhci_hcd *xhci)
