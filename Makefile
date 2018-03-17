@@ -308,7 +308,7 @@ HOSTCXXFLAGS = -O2
 
 ifeq ($(shell $(HOSTCC) -v 2>&1 | grep -c "clang version"), 1)
 HOSTCFLAGS  += -Wno-unused-value -Wno-unused-parameter \
-		-Wno-missing-field-initializers -fno-delete-null-pointer-checks
+		-Wno-missing-field-initializers
 endif
 
 # Decide whether to build built-in, modular, or both.
@@ -377,6 +377,21 @@ AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im
 
 
+ifeq ($(cc-name),clang)
+ifneq ($(CROSS_COMPILE),)
+CLANG_TRIPLE	?= $(CROSS_COMPILE)
+CLANG_TARGET	:= -target $(notdir $(CLANG_TRIPLE:%-=%))
+GCC_TOOLCHAIN	:= $(realpath $(dir $(shell which $(LD)))/..)
+endif
+ifneq ($(GCC_TOOLCHAIN),)
+CLANG_GCC_TC	:= -gcc-toolchain $(GCC_TOOLCHAIN)
+endif
+ifneq ($(CLANG_ENABLE_IA),1)
+CLANG_IA_FLAG	= -no-integrated-as
+endif
+CLANG_FLAGS	:= $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_IA_FLAG) -meabi gnu
+endif
+
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE    := \
 		-I$(srctree)/arch/$(hdr-arch)/include/uapi \
@@ -395,18 +410,18 @@ LINUXINCLUDE    := \
 		-Iinclude \
 		$(USERINCLUDE)
 
-KBUILD_CPPFLAGS := -D__KERNEL__
+KBUILD_CPPFLAGS := -D__KERNEL__ $(CLANG_FLAGS)
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-		   -std=gnu89 $(call cc-option,-fno-PIE)
+		   -std=gnu89 $(call cc-option,-fno-PIE) $(CLANG_FLAGS)
 
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
-KBUILD_AFLAGS   := -D__ASSEMBLY__ $(call cc-option,-fno-PIE)
+KBUILD_AFLAGS   := -D__ASSEMBLY__ $(call cc-option,-fno-PIE) $(CLANG_FLAGS)
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
@@ -630,7 +645,7 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, int-in-bool-context)
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= -Os
+KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os)
 else
 ifdef CONFIG_PROFILE_ALL_BRANCHES
 KBUILD_CFLAGS	+= -O2
@@ -701,19 +716,27 @@ KBUILD_CFLAGS += $(stackp-flag)
 
 ifeq ($(cc-name),clang)
 KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
-KBUILD_CPPFLAGS += $(call cc-option,-Wno-unknown-warning-option,)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, format-invalid-specifier)
 KBUILD_CFLAGS += $(call cc-disable-warning, gnu)
+KBUILD_CFLAGS += $(call cc-disable-warning, pointer-bool-conversion)
+KBUILD_CFLAGS += $(call cc-disable-warning, address-of-packed-member)
+KBUILD_CFLAGS += $(call cc-disable-warning, duplicate-decl-specifier)
+KBUILD_CFLAGS += -Wno-asm-operand-widths
+KBUILD_CFLAGS += -Wno-initializer-overrides
+KBUILD_CFLAGS += -fno-builtin
+
 # Quiet clang warning: comparison of unsigned expression < 0 is always false
+
 KBUILD_CFLAGS += $(call cc-disable-warning, tautological-compare)
 # CLANG uses a _MergedGlobals as optimization, but this breaks modpost, as the
 # source of a reference will be _MergedGlobals and not on of the whitelisted names.
 # See modpost pattern 2
 KBUILD_CFLAGS += $(call cc-option, -mno-global-merge,)
-KBUILD_CFLAGS += $(call cc-option, -fcatch-undefined-behavior)
+
 else
 
+KBUILD_CFLAGS += $(call cc-option,-fno-delete-null-pointer-checks,)
 # These warnings generated too much noise in a regular build.
 # Use make W=1 to enable them (see scripts/Makefile.build)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
