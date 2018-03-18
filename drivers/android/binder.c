@@ -2997,7 +2997,7 @@ static void binder_transaction(struct binder_proc *proc,
 				return_error = BR_DEAD_REPLY;
 			mutex_unlock(&context->context_mgr_node_lock);
 		}
-		if (!target_node) {
+		if (target_node == NULL) {
 			/*
 			 * return_error is set above
 			 */
