@@ -1570,7 +1570,6 @@ config WCD934X_CODEC
 	select WCD9XXX_CODEC_UTIL
 	select MSM_CDC_SUPPLY
 	select MSM_CDC_PINCTRL
-	select PINCTRL_WCD
 	help
 	  Enables the WCD9xxx codec core driver. The core driver provides
 	  read/write capability to registers which are part of the
