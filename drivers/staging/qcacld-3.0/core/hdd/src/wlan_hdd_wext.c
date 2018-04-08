@@ -4470,7 +4470,7 @@ static int iw_set_commit(struct net_device *dev, struct iw_request_info *info,
  * Return: 0 on success, non-zero on error
  */
 static int __iw_get_name(struct net_device *dev,
-		       struct iw_request_info *info, char *wrqu, char *extra)
+		       struct iw_request_info *info, union iwreq_data *wrqu, char *extra)
 {
 	hdd_adapter_t *adapter;
 	hdd_context_t *hdd_ctx;
@@ -4484,7 +4484,7 @@ static int __iw_get_name(struct net_device *dev,
 	if (0 != ret)
 		return ret;
 
-	strlcpy(wrqu, "Qcom:802.11n", IFNAMSIZ);
+	strlcpy(wrqu->name, "Qcom:802.11n", IFNAMSIZ);
 	EXIT();
 	return 0;
 }
@@ -4500,7 +4500,7 @@ static int __iw_get_name(struct net_device *dev,
  */
 static int iw_get_name(struct net_device *dev,
 			 struct iw_request_info *info,
-			 char *wrqu, char *extra)
+			 union iwreq_data *wrqu, char *extra)
 {
 	int ret;
 
@@ -9045,9 +9045,11 @@ static int __iw_setchar_getnone(struct net_device *dev,
 		tRrmNeighborRspCallbackInfo callbackInfo;
 
 		if (pConfig->fRrmEnable) {
-			hdd_debug("Neighbor Request");
+			neighborReq.neighbor_report_offload = false;
 			neighborReq.no_ssid =
 				(s_priv_data.length - 1) ? false : true;
+			hdd_debug("Neighbor Request ssid present %d",
+				  neighborReq.no_ssid);
 			if (!neighborReq.no_ssid) {
 				neighborReq.ssid.length =
 					(s_priv_data.length - 1) >
@@ -9057,14 +9059,25 @@ static int __iw_setchar_getnone(struct net_device *dev,
 					     neighborReq.ssid.length);
 			}
 
+			/*
+			 * If 11k offload is supported by FW and enabled
+			 * in the ini, set the offload to true
+			 */
+			if (hdd_ctx->config->is_11k_offload_supported &&
+			    (hdd_ctx->config->offload_11k_enable_bitmask &
+			    OFFLOAD_11K_BITMASK_NEIGHBOR_REPORT_REQUEST)) {
+				hdd_debug("Neighbor report offloaded to FW");
+				neighborReq.neighbor_report_offload = true;
+			}
+
 			callbackInfo.neighborRspCallback = NULL;
 			callbackInfo.neighborRspCallbackContext = NULL;
-			callbackInfo.timeout = 5000;            /* 5 seconds */
-			sme_neighbor_report_request(WLAN_HDD_GET_HAL_CTX
-							    (pAdapter),
-						    pAdapter->sessionId,
-						    &neighborReq,
-						    &callbackInfo);
+			callbackInfo.timeout = 5000; /* 5 seconds */
+			sme_neighbor_report_request(
+					WLAN_HDD_GET_HAL_CTX(pAdapter),
+					pAdapter->sessionId,
+					&neighborReq,
+					&callbackInfo);
 		} else {
 			hdd_err("Ignoring neighbor request as RRM not enabled");
 			ret = -EINVAL;
