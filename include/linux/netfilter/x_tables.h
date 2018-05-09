@@ -247,6 +247,8 @@ unsigned int *xt_alloc_entry_offsets(unsigned int size);
 bool xt_find_jump_offset(const unsigned int *offsets,
 			 unsigned int target, unsigned int size);
 
+int xt_check_proc_name(const char *name, unsigned int size);
+
 int xt_check_match(struct xt_mtchk_param *, unsigned int size, u_int8_t proto,
 		   bool inv_proto);
 int xt_check_target(struct xt_tgchk_param *, unsigned int size, u_int8_t proto,
@@ -461,7 +463,7 @@ void xt_compat_unlock(u_int8_t af);
 
 int xt_compat_add_offset(u_int8_t af, unsigned int offset, int delta);
 void xt_compat_flush_offsets(u_int8_t af);
-void xt_compat_init_offsets(u_int8_t af, unsigned int number);
+int xt_compat_init_offsets(u8 af, unsigned int number);
 int xt_compat_calc_jump(u_int8_t af, unsigned int offset);
 
 int xt_compat_match_offset(const struct xt_match *match);

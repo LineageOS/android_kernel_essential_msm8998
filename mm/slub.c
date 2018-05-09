@@ -124,7 +124,7 @@ static inline int kmem_cache_debug(struct kmem_cache *s)
 #endif
 }
 
-static inline void *fixup_red_left(struct kmem_cache *s, void *p)
+inline void *fixup_red_left(struct kmem_cache *s, void *p)
 {
 	if (kmem_cache_debug(s) && s->flags & SLAB_RED_ZONE)
 		p += s->red_left_pad;
@@ -274,30 +274,6 @@ static inline void set_freepointer(struct kmem_cache *s, void *object, void *fp)
 static inline int slab_index(void *p, struct kmem_cache *s, void *addr)
 {
 	return (p - addr) / s->size;
-}
-
-static inline size_t slab_ksize(const struct kmem_cache *s)
-{
-#ifdef CONFIG_SLUB_DEBUG
-	/*
-	 * Debugging requires use of the padding between object
-	 * and whatever may come after it.
-	 */
-	if (s->flags & (SLAB_RED_ZONE | SLAB_POISON))
-		return s->object_size;
-
-#endif
-	/*
-	 * If we have the need to store the freelist pointer
-	 * back there or track user information then we can
-	 * only use the space before that information.
-	 */
-	if (s->flags & (SLAB_DESTROY_BY_RCU | SLAB_STORE_USER))
-		return s->inuse;
-	/*
-	 * Else we can use all the padding etc for the allocation
-	 */
-	return s->size;
 }
 
 static inline int order_objects(int order, unsigned long size, int reserved)
@@ -469,8 +445,6 @@ static inline void *restore_red_left(struct kmem_cache *s, void *p)
  */
 #if defined(CONFIG_SLUB_DEBUG_ON)
 static int slub_debug = DEBUG_DEFAULT_FLAGS;
-#elif defined(CONFIG_KASAN)
-static int slub_debug = SLAB_STORE_USER;
 #else
 static int slub_debug;
 #endif
@@ -675,6 +649,8 @@ static void print_trailer(struct kmem_cache *s, struct page *page, u8 *p)
 	if (s->flags & SLAB_STORE_USER)
 		off += 2 * sizeof(struct track);
 
+	off += kasan_metadata_size(s);
+
 	if (off != size_from_object(s))
 		/* Beginning of the filler is the free pointer */
 		print_section("Padding ", p + off, size_from_object(s) - off);
@@ -813,6 +789,8 @@ static int check_pad_bytes(struct kmem_cache *s, struct page *page, u8 *p)
 	if (s->flags & SLAB_STORE_USER)
 		/* We also have user information there */
 		off += 2 * sizeof(struct track);
+
+	off += kasan_metadata_size(s);
 
 	if (size_from_object(s) == off)
 		return 1;
@@ -1319,7 +1297,7 @@ static inline void dec_slabs_node(struct kmem_cache *s, int node,
 static inline void kmalloc_large_node_hook(void *ptr, size_t size, gfp_t flags)
 {
 	kmemleak_alloc(ptr, size, 1, flags);
-	kasan_kmalloc_large(ptr, size);
+	kasan_kmalloc_large(ptr, size, flags);
 }
 
 static inline void kfree_hook(const void *x)
@@ -1328,38 +1306,10 @@ static inline void kfree_hook(const void *x)
 	kasan_kfree_large(x);
 }
 
-static inline struct kmem_cache *slab_pre_alloc_hook(struct kmem_cache *s,
-						     gfp_t flags)
+static inline void *slab_free_hook(struct kmem_cache *s, void *x)
 {
-	flags &= gfp_allowed_mask;
-	lockdep_trace_alloc(flags);
-	might_sleep_if(gfpflags_allow_blocking(flags));
+	void *freeptr;
 
-	if (should_failslab(s->object_size, flags, s->flags))
-		return NULL;
-
-	return memcg_kmem_get_cache(s, flags);
-}
-
-static inline void slab_post_alloc_hook(struct kmem_cache *s, gfp_t flags,
-					size_t size, void **p)
-{
-	size_t i;
-
-	flags &= gfp_allowed_mask;
-	for (i = 0; i < size; i++) {
-		void *object = p[i];
-
-		kmemcheck_slab_alloc(s, flags, object, slab_ksize(s));
-		kmemleak_alloc_recursive(object, s->object_size, 1,
-					 s->flags, flags);
-		kasan_slab_alloc(s, object);
-	}
-	memcg_kmem_put_cache(s);
-}
-
-static inline void slab_free_hook(struct kmem_cache *s, void *x)
-{
 	kmemleak_free_recursive(x, s->flags);
 
 	/*
@@ -1380,7 +1330,13 @@ static inline void slab_free_hook(struct kmem_cache *s, void *x)
 	if (!(s->flags & SLAB_DEBUG_OBJECTS))
 		debug_check_no_obj_freed(x, s->object_size);
 
+	freeptr = get_freepointer(s, x);
+	/*
+	 * kasan_slab_free() may put x into memory quarantine, delaying its
+	 * reuse. In this case the object's freelist pointer is changed.
+	 */
 	kasan_slab_free(s, x);
+	return freeptr;
 }
 
 static inline void slab_free_freelist_hook(struct kmem_cache *s,
@@ -1398,11 +1354,11 @@ static inline void slab_free_freelist_hook(struct kmem_cache *s,
 
 	void *object = head;
 	void *tail_obj = tail ? : head;
+	void *freeptr;
 
 	do {
-		slab_free_hook(s, object);
-	} while ((object != tail_obj) &&
-		 (object = get_freepointer(s, object)));
+		freeptr = slab_free_hook(s, object);
+	} while ((object != tail_obj) && (object = freeptr));
 #endif
 }
 
@@ -1410,6 +1366,7 @@ static void setup_object(struct kmem_cache *s, struct page *page,
 				void *object)
 {
 	setup_object_debug(s, page, object);
+	kasan_init_slab_obj(s, object);
 	if (unlikely(s->ctor)) {
 		kasan_unpoison_object_data(s, object);
 		s->ctor(object);
@@ -1441,6 +1398,109 @@ static inline struct page *alloc_slab_page(struct kmem_cache *s,
 	return page;
 }
 
+#ifdef CONFIG_SLAB_FREELIST_RANDOM
+/* Pre-initialize the random sequence cache */
+static int init_cache_random_seq(struct kmem_cache *s)
+{
+	int err;
+	unsigned long i, count = oo_objects(s->oo);
+
+	err = cache_random_seq_create(s, count, GFP_KERNEL);
+	if (err) {
+		pr_err("SLUB: Unable to initialize free list for %s\n",
+			s->name);
+		return err;
+	}
+
+	/* Transform to an offset on the set of pages */
+	if (s->random_seq) {
+		for (i = 0; i < count; i++)
+			s->random_seq[i] *= s->size;
+	}
+	return 0;
+}
+
+/* Initialize each random sequence freelist per cache */
+static void __init init_freelist_randomization(void)
+{
+	struct kmem_cache *s;
+
+	mutex_lock(&slab_mutex);
+
+	list_for_each_entry(s, &slab_caches, list)
+		init_cache_random_seq(s);
+
+	mutex_unlock(&slab_mutex);
+}
+
+/* Get the next entry on the pre-computed freelist randomized */
+static void *next_freelist_entry(struct kmem_cache *s, struct page *page,
+				unsigned long *pos, void *start,
+				unsigned long page_limit,
+				unsigned long freelist_count)
+{
+	unsigned int idx;
+
+	/*
+	 * If the target page allocation failed, the number of objects on the
+	 * page might be smaller than the usual size defined by the cache.
+	 */
+	do {
+		idx = s->random_seq[*pos];
+		*pos += 1;
+		if (*pos >= freelist_count)
+			*pos = 0;
+	} while (unlikely(idx >= page_limit));
+
+	return (char *)start + idx;
+}
+
+/* Shuffle the single linked freelist based on a random pre-computed sequence */
+static bool shuffle_freelist(struct kmem_cache *s, struct page *page)
+{
+	void *start;
+	void *cur;
+	void *next;
+	unsigned long idx, pos, page_limit, freelist_count;
+
+	if (page->objects < 2 || !s->random_seq)
+		return false;
+
+	freelist_count = oo_objects(s->oo);
+	pos = get_random_int() % freelist_count;
+
+	page_limit = page->objects * s->size;
+	start = fixup_red_left(s, page_address(page));
+
+	/* First entry is used as the base of the freelist */
+	cur = next_freelist_entry(s, page, &pos, start, page_limit,
+				freelist_count);
+	page->freelist = cur;
+
+	for (idx = 1; idx < page->objects; idx++) {
+		setup_object(s, page, cur);
+		next = next_freelist_entry(s, page, &pos, start, page_limit,
+			freelist_count);
+		set_freepointer(s, cur, next);
+		cur = next;
+	}
+	setup_object(s, page, cur);
+	set_freepointer(s, cur, NULL);
+
+	return true;
+}
+#else
+static inline int init_cache_random_seq(struct kmem_cache *s)
+{
+	return 0;
+}
+static inline void init_freelist_randomization(void) { }
+static inline bool shuffle_freelist(struct kmem_cache *s, struct page *page)
+{
+	return false;
+}
+#endif /* CONFIG_SLAB_FREELIST_RANDOM */
+
 static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
 {
 	struct page *page;
@@ -1448,6 +1508,7 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
 	gfp_t alloc_gfp;
 	void *start, *p;
 	int idx, order;
+	bool shuffle;
 
 	flags &= gfp_allowed_mask;
 
@@ -1509,15 +1570,19 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
 
 	kasan_poison_slab(page);
 
-	for_each_object_idx(p, idx, s, start, page->objects) {
-		setup_object(s, page, p);
-		if (likely(idx < page->objects))
-			set_freepointer(s, p, p + s->size);
-		else
-			set_freepointer(s, p, NULL);
+	shuffle = shuffle_freelist(s, page);
+
+	if (!shuffle) {
+		for_each_object_idx(p, idx, s, start, page->objects) {
+			setup_object(s, page, p);
+			if (likely(idx < page->objects))
+				set_freepointer(s, p, p + s->size);
+			else
+				set_freepointer(s, p, NULL);
+		}
+		page->freelist = fixup_red_left(s, start);
 	}
 
-	page->freelist = fixup_red_left(s, start);
 	page->inuse = page->objects;
 	page->frozen = 1;
 
@@ -1640,18 +1705,12 @@ static inline void add_partial(struct kmem_cache_node *n,
 	__add_partial(n, page, tail);
 }
 
-static inline void
-__remove_partial(struct kmem_cache_node *n, struct page *page)
-{
-	list_del(&page->lru);
-	n->nr_partial--;
-}
-
 static inline void remove_partial(struct kmem_cache_node *n,
 					struct page *page)
 {
 	lockdep_assert_held(&n->list_lock);
-	__remove_partial(n, page);
+	list_del(&page->lru);
+	n->nr_partial--;
 }
 
 /*
@@ -2638,7 +2697,7 @@ void *kmem_cache_alloc_trace(struct kmem_cache *s, gfp_t gfpflags, size_t size)
 {
 	void *ret = slab_alloc(s, gfpflags, _RET_IP_);
 	trace_kmalloc(_RET_IP_, ret, size, s->size, gfpflags);
-	kasan_kmalloc(s, ret, size);
+	kasan_kmalloc(s, ret, size, gfpflags);
 	return ret;
 }
 EXPORT_SYMBOL(kmem_cache_alloc_trace);
@@ -2666,7 +2725,7 @@ void *kmem_cache_alloc_node_trace(struct kmem_cache *s,
 	trace_kmalloc_node(_RET_IP_, ret,
 			   size, s->size, gfpflags, node);
 
-	kasan_kmalloc(s, ret, size);
+	kasan_kmalloc(s, ret, size, gfpflags);
 	return ret;
 }
 EXPORT_SYMBOL(kmem_cache_alloc_node_trace);
@@ -2811,16 +2870,13 @@ slab_empty:
  * same page) possible by specifying head and tail ptr, plus objects
  * count (cnt). Bulk free indicated by tail pointer being set.
  */
-static __always_inline void slab_free(struct kmem_cache *s, struct page *page,
-				      void *head, void *tail, int cnt,
-				      unsigned long addr)
+static __always_inline void do_slab_free(struct kmem_cache *s,
+				struct page *page, void *head, void *tail,
+				int cnt, unsigned long addr)
 {
 	void *tail_obj = tail ? : head;
 	struct kmem_cache_cpu *c;
 	unsigned long tid;
-
-	slab_free_freelist_hook(s, head, tail);
-
 redo:
 	/*
 	 * Determine the currently cpus per cpu slab.
@@ -2853,6 +2909,27 @@ redo:
 		__slab_free(s, page, head, tail_obj, cnt, addr);
 
 }
+
+static __always_inline void slab_free(struct kmem_cache *s, struct page *page,
+				      void *head, void *tail, int cnt,
+				      unsigned long addr)
+{
+	slab_free_freelist_hook(s, head, tail);
+	/*
+	 * slab_free_freelist_hook() could have put the items into quarantine.
+	 * If so, no need to free them.
+	 */
+	if (s->flags & SLAB_KASAN && !(s->flags & SLAB_DESTROY_BY_RCU))
+		return;
+	do_slab_free(s, page, head, tail, cnt, addr);
+}
+
+#ifdef CONFIG_KASAN
+void ___cache_free(struct kmem_cache *cache, void *x, unsigned long addr)
+{
+	do_slab_free(cache, virt_to_head_page(x), x, NULL, 1, addr);
+}
+#endif
 
 void kmem_cache_free(struct kmem_cache *s, void *x)
 {
@@ -3210,7 +3287,8 @@ static void early_kmem_cache_node_alloc(int node)
 	init_object(kmem_cache_node, n, SLUB_RED_ACTIVE);
 	init_tracking(kmem_cache_node, n);
 #endif
-	kasan_kmalloc(kmem_cache_node, n, sizeof(struct kmem_cache_node));
+	kasan_kmalloc(kmem_cache_node, n, sizeof(struct kmem_cache_node),
+		      GFP_KERNEL);
 	init_kmem_cache_node(n);
 	inc_slabs_node(kmem_cache_node, node, page->objects);
 
@@ -3230,6 +3308,13 @@ static void free_kmem_cache_nodes(struct kmem_cache *s)
 		kmem_cache_free(kmem_cache_node, n);
 		s->node[node] = NULL;
 	}
+}
+
+void __kmem_cache_release(struct kmem_cache *s)
+{
+	cache_random_seq_destroy(s);
+	free_percpu(s->cpu_slab);
+	free_kmem_cache_nodes(s);
 }
 
 static int init_kmem_cache_nodes(struct kmem_cache *s)
@@ -3273,7 +3358,7 @@ static void set_min_partial(struct kmem_cache *s, unsigned long min)
 static int calculate_sizes(struct kmem_cache *s, int forced_order)
 {
 	unsigned long flags = s->flags;
-	unsigned long size = s->object_size;
+	size_t size = s->object_size;
 	int order;
 
 	/*
@@ -3332,7 +3417,10 @@ static int calculate_sizes(struct kmem_cache *s, int forced_order)
 		 * the object.
 		 */
 		size += 2 * sizeof(struct track);
+#endif
 
+	kasan_cache_create(s, &size, &s->flags);
+#ifdef CONFIG_SLUB_DEBUG
 	if (flags & SLAB_RED_ZONE) {
 		/*
 		 * Add some empty padding so that we can catch
@@ -3452,6 +3540,13 @@ static int kmem_cache_open(struct kmem_cache *s, unsigned long flags)
 #ifdef CONFIG_NUMA
 	s->remote_node_defrag_ratio = 1000;
 #endif
+
+	/* Initialize the pre-computed randomized freelist if slab is up */
+	if (slab_state >= UP) {
+		if (init_cache_random_seq(s))
+			goto error;
+	}
+
 	if (!init_kmem_cache_nodes(s))
 		goto error;
 
@@ -3496,28 +3591,31 @@ static void list_slab_objects(struct kmem_cache *s, struct page *page,
 
 /*
  * Attempt to free all partial slabs on a node.
- * This is called from kmem_cache_close(). We must be the last thread
- * using the cache and therefore we do not need to lock anymore.
+ * This is called from __kmem_cache_shutdown(). We must take list_lock
+ * because sysfs file might still access partial list after the shutdowning.
  */
 static void free_partial(struct kmem_cache *s, struct kmem_cache_node *n)
 {
 	struct page *page, *h;
 
+	BUG_ON(irqs_disabled());
+	spin_lock_irq(&n->list_lock);
 	list_for_each_entry_safe(page, h, &n->partial, lru) {
 		if (!page->inuse) {
-			__remove_partial(n, page);
+			remove_partial(n, page);
 			discard_slab(s, page);
 		} else {
 			list_slab_objects(s, page,
-			"Objects remaining in %s on kmem_cache_close()");
+			"Objects remaining in %s on __kmem_cache_shutdown()");
 		}
 	}
+	spin_unlock_irq(&n->list_lock);
 }
 
 /*
  * Release all resources used by a slab cache.
  */
-static inline int kmem_cache_close(struct kmem_cache *s)
+int __kmem_cache_shutdown(struct kmem_cache *s)
 {
 	int node;
 	struct kmem_cache_node *n;
@@ -3529,14 +3627,7 @@ static inline int kmem_cache_close(struct kmem_cache *s)
 		if (n->nr_partial || slabs_node(s, node))
 			return 1;
 	}
-	free_percpu(s->cpu_slab);
-	free_kmem_cache_nodes(s);
 	return 0;
-}
-
-int __kmem_cache_shutdown(struct kmem_cache *s)
-{
-	return kmem_cache_close(s);
 }
 
 /********************************************************************
@@ -3588,7 +3679,7 @@ void *__kmalloc(size_t size, gfp_t flags)
 
 	trace_kmalloc(_RET_IP_, ret, size, s->size, flags);
 
-	kasan_kmalloc(s, ret, size);
+	kasan_kmalloc(s, ret, size, flags);
 
 	return ret;
 }
@@ -3633,7 +3724,7 @@ void *__kmalloc_node(size_t size, gfp_t flags, int node)
 
 	trace_kmalloc_node(_RET_IP_, ret, size, s->size, flags, node);
 
-	kasan_kmalloc(s, ret, size);
+	kasan_kmalloc(s, ret, size, flags);
 
 	return ret;
 }
@@ -3701,8 +3792,9 @@ size_t ksize(const void *object)
 {
 	size_t size = __ksize(object);
 	/* We assume that ksize callers could use whole allocated area,
-	   so we need unpoison this area. */
-	kasan_krealloc(object, size);
+	 * so we need to unpoison this area.
+	 */
+	kasan_unpoison_shadow(object, size);
 	return size;
 }
 EXPORT_SYMBOL(ksize);
@@ -4013,6 +4105,9 @@ void __init kmem_cache_init(void)
 	setup_kmalloc_cache_index_table();
 	create_kmalloc_caches(0);
 
+	/* Setup random freelists for each cache */
+	init_freelist_randomization();
+
 #ifdef CONFIG_SMP
 	register_cpu_notifier(&slab_notifier);
 #endif
@@ -4074,7 +4169,7 @@ int __kmem_cache_create(struct kmem_cache *s, unsigned long flags)
 	memcg_propagate_slab_attrs(s);
 	err = sysfs_slab_add(s);
 	if (err)
-		kmem_cache_close(s);
+		__kmem_cache_release(s);
 
 	return err;
 }

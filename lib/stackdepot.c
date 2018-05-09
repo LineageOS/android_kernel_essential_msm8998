@@ -50,7 +50,7 @@
 					STACK_ALLOC_ALIGN)
 #define STACK_ALLOC_INDEX_BITS (DEPOT_STACK_BITS - \
 		STACK_ALLOC_NULL_PROTECTION_BITS - STACK_ALLOC_OFFSET_BITS)
-#define STACK_ALLOC_SLABS_CAP 1024
+#define STACK_ALLOC_SLABS_CAP 8192
 #define STACK_ALLOC_MAX_SLABS \
 	(((1LL << (STACK_ALLOC_INDEX_BITS)) < STACK_ALLOC_SLABS_CAP) ? \
 	 (1LL << (STACK_ALLOC_INDEX_BITS)) : STACK_ALLOC_SLABS_CAP)
@@ -146,7 +146,7 @@ static struct stack_record *depot_alloc_stack(unsigned long *entries, int size,
 	return stack;
 }
 
-#define STACK_HASH_ORDER 18
+#define STACK_HASH_ORDER 20
 #define STACK_HASH_SIZE (1L << STACK_HASH_ORDER)
 #define STACK_HASH_MASK (STACK_HASH_SIZE - 1)
 #define STACK_HASH_SEED 0x9747b28c
@@ -192,6 +192,7 @@ void depot_fetch_stack(depot_stack_handle_t handle, struct stack_trace *trace)
 	trace->entries = stack->entries;
 	trace->skip = 0;
 }
+EXPORT_SYMBOL_GPL(depot_fetch_stack);
 
 /**
  * depot_save_stack - save stack in a stack depot.
@@ -283,3 +284,4 @@ exit:
 fast_exit:
 	return retval;
 }
+EXPORT_SYMBOL_GPL(depot_save_stack);

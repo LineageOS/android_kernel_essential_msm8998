@@ -49,6 +49,7 @@
 #include <linux/kdebug.h>
 #include <linux/kallsyms.h>
 #include <linux/ftrace.h>
+#include <linux/moduleloader.h>
 
 #include <asm/cacheflush.h>
 #include <asm/desc.h>
@@ -400,6 +401,14 @@ int __copy_instruction(u8 *dest, u8 *src)
 	}
 #endif
 	return length;
+}
+
+/* Recover page to RW mode before releasing it */
+void free_insn_page(void *page)
+{
+	set_memory_nx((unsigned long)page & PAGE_MASK, 1);
+	set_memory_rw((unsigned long)page & PAGE_MASK, 1);
+	module_memfree(page);
 }
 
 static int arch_copy_kprobe(struct kprobe *p)
@@ -1061,9 +1070,10 @@ int setjmp_pre_handler(struct kprobe *p, struct pt_regs *regs)
 	 * tailcall optimization. So, to be absolutely safe
 	 * we also save and restore enough stack bytes to cover
 	 * the argument area.
+	 * Use __memcpy() to avoid KASAN stack out-of-bounds reports as we copy
+	 * raw stack chunk with redzones:
 	 */
-	memcpy(kcb->jprobes_stack, (kprobe_opcode_t *)addr,
-	       MIN_STACK_SIZE(addr));
+	__memcpy(kcb->jprobes_stack, (kprobe_opcode_t *)addr, MIN_STACK_SIZE(addr));
 	regs->flags &= ~X86_EFLAGS_IF;
 	trace_hardirqs_off();
 	regs->ip = (unsigned long)(jp->entry);
@@ -1122,7 +1132,7 @@ int longjmp_break_handler(struct kprobe *p, struct pt_regs *regs)
 		/* It's OK to start function graph tracing again */
 		unpause_graph_tracing();
 		*regs = kcb->jprobe_saved_regs;
-		memcpy(saved_sp, kcb->jprobes_stack, MIN_STACK_SIZE(saved_sp));
+		__memcpy(saved_sp, kcb->jprobes_stack, MIN_STACK_SIZE(saved_sp));
 		preempt_enable_no_resched();
 		return 1;
 	}

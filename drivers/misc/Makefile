@@ -67,6 +67,9 @@ obj-y				+= qcom/
 obj-$(CONFIG_QPNP_MISC) 	+= qpnp-misc.o
 obj-$(CONFIG_MEMORY_STATE_TIME) += memory_state_time.o
 
+KASAN_SANITIZE_compat_qseecom.o := n
+KASAN_SANITIZE_qseecom.o := n
+
 # TODO: remove me b/62058353
 subdir-ccflags-y += \
 	-Wno-ignored-attributes \
