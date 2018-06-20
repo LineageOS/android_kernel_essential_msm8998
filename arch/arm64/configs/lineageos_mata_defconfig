@@ -1705,6 +1705,8 @@ CONFIG_CNSS_UTILS=y
 # CONFIG_VMXNET3 is not set
 # CONFIG_FUJITSU_ES is not set
 # CONFIG_RMNET is not set
+CONFIG_WIREGUARD=y
+# CONFIG_WIREGUARD_DEBUG is not set
 # CONFIG_ISDN is not set
 # CONFIG_NVM is not set
 
