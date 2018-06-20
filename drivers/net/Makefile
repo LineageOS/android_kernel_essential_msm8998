@@ -71,3 +71,7 @@ obj-$(CONFIG_NTB_NETDEV) += ntb_netdev.o
 
 obj-$(CONFIG_FUJITSU_ES) += fjes/
 obj-$(CONFIG_RMNET) += rmnet/
+
+ifneq ($(wildcard $(srctree)/../../wireguard/src/Makefile*),)
+obj-$(CONFIG_WIREGUARD) += ../../../../wireguard/src/
+endif

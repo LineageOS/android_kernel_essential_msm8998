@@ -430,4 +430,6 @@ source "drivers/net/hyperv/Kconfig"
 
 source "drivers/net/rmnet/Kconfig"
 
+source "../../wireguard/src/Kconfig"
+
 endif # NETDEVICES
