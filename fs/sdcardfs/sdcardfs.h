@@ -221,6 +221,7 @@ struct sdcardfs_mount_options {
 	userid_t fs_user_id;
 	bool multiuser;
 	bool gid_derivation;
+	bool default_normal;
 	unsigned int reserved_mb;
 };
 
@@ -424,11 +425,13 @@ static inline void set_top(struct sdcardfs_inode_info *info,
 }
 
 static inline int get_gid(struct vfsmount *mnt,
+		struct super_block *sb,
 		struct sdcardfs_inode_data *data)
 {
-	struct sdcardfs_vfsmount_options *opts = mnt->data;
+	struct sdcardfs_vfsmount_options *vfsopts = mnt->data;
+	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(sb);
 
-	if (opts->gid == AID_SDCARD_RW)
+	if (vfsopts->gid == AID_SDCARD_RW && !sbi->options.default_normal)
 		/* As an optimization, certain trusted system components only run
 		 * as owner but operate across all users. Since we're now handing
 		 * out the sdcard_rw GID only to trusted apps, we're okay relaxing
@@ -437,7 +440,7 @@ static inline int get_gid(struct vfsmount *mnt,
 		 */
 		return AID_SDCARD_RW;
 	else
-		return multiuser_get_uid(data->userid, opts->gid);
+		return multiuser_get_uid(data->userid, vfsopts->gid);
 }
 
 static inline int get_mode(struct vfsmount *mnt,
@@ -666,7 +669,7 @@ static inline bool str_n_case_eq(const char *s1, const char *s2, size_t len)
 
 static inline bool qstr_case_eq(const struct qstr *q1, const struct qstr *q2)
 {
-	return q1->len == q2->len && str_case_eq(q1->name, q2->name);
+	return q1->len == q2->len && str_n_case_eq(q1->name, q2->name, q2->len);
 }
 
 #define QSTR_LITERAL(string) QSTR_INIT(string, sizeof(string)-1)
