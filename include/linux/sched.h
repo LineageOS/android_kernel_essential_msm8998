@@ -1715,7 +1715,7 @@ struct task_struct {
 
 	struct mm_struct *mm, *active_mm;
 	/* per-thread vma caching */
-	u32 vmacache_seqnum;
+	u64 vmacache_seqnum;
 	struct vm_area_struct *vmacache[VMACACHE_SIZE];
 #if defined(SPLIT_RSS_COUNTING)
 	struct task_rss_stat	rss_stat;
@@ -2108,6 +2108,8 @@ struct task_struct {
 	unsigned long	task_state_change;
 #endif
 	int pagefault_disabled;
+	atomic64_t *concurrent_active_time;
+	atomic64_t *concurrent_policy_time;
 /* CPU-specific state of this task */
 	struct thread_struct thread;
 /*
