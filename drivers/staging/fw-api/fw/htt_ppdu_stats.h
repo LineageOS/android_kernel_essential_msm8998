@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -296,8 +296,11 @@ enum HTT_STATS_FTYPE {
     HTT_STATS_FTYPE_SGEN_MU_RTS,
     HTT_STATS_FTYPE_SGEN_MU_BSR,
     HTT_STATS_FTYPE_SGEN_UL_BSR,
+    HTT_STATS_FTYPE_SGEN_UL_BSR_TRIGGER = HTT_STATS_FTYPE_SGEN_UL_BSR, /*alias*/
     HTT_STATS_FTYPE_TIDQ_DATA_SU,
     HTT_STATS_FTYPE_TIDQ_DATA_MU,
+    HTT_STATS_FTYPE_SGEN_UL_BSR_RESP,
+    HTT_STATS_FTYPE_SGEN_QOS_NULL,
     HTT_STATS_FTYPE_MAX,
 };
 typedef enum HTT_STATS_FTYPE HTT_STATS_FTYPE;
@@ -506,6 +509,18 @@ typedef struct {
          ((_var) |= ((_val) << HTT_PPDU_STATS_USER_COMMON_TLV_BW_S)); \
      } while (0)
 
+#define HTT_PPDU_STATS_USER_COMMON_TLV_DELAYED_BA_M     0x00004000
+#define HTT_PPDU_STATS_USER_COMMON_TLV_DELAYED_BA_S             14
+
+#define HTT_PPDU_STATS_USER_COMMON_TLV_DELAYED_BA_GET(_var) \
+    (((_var) & HTT_PPDU_STATS_USER_COMMON_TLV_DELAYED_BA_M) >> \
+    HTT_PPDU_STATS_USER_COMMON_TLV_DELAYED_BA_S)
+
+#define HTT_PPDU_STATS_USER_COMMON_TLV_DELAYED_BA_SET(_var, _val) \
+     do { \
+         HTT_CHECK_SET_VAL(HTT_PPDU_STATS_USER_COMMON_TLV_DELAYED_BA, _val); \
+         ((_var) |= ((_val) << HTT_PPDU_STATS_USER_COMMON_TLV_DELAYED_BA_S)); \
+     } while (0)
 
 #define HTT_PPDU_STATS_USER_COMMON_TLV_FRAME_CTRL_M     0x0000ffff
 #define HTT_PPDU_STATS_USER_COMMON_TLV_FRAME_CTRL_S              0
@@ -552,7 +567,8 @@ typedef struct {
     /* BIT [ 0 :    0]   :- mcast
      * BIT [ 9 :    1]   :- mpdus_tried
      * BIT [ 13:   10]   :- bw - HTT_PPDU_STATS_BW
-     * BIT [ 31:   14]   :- rsvd
+     * BIT [ 14:   14]   : - delayed_ba
+     * BIT [ 31:   15]   :- rsvd
      */
     union {
         A_UINT32 bw__mpdus_tried__mcast;
@@ -560,7 +576,8 @@ typedef struct {
             A_UINT32 mcast:              1,
                      mpdus_tried:        9,
                      bw:                 4,
-                     reserved0:         18;
+                     delayed_ba:         1,
+                     reserved0:         17;
         };
     };
 
@@ -1477,7 +1494,7 @@ typedef struct {
          ((_var) |= ((_val) << HTT_PPDU_STATS_FLUSH_TLV_NUM_MPDU_S)); \
      } while (0)
 
-#define HTT_PPDU_STATS_FLUSH_TLV_NUM_MSDU_M     0x01fe0000
+#define HTT_PPDU_STATS_FLUSH_TLV_NUM_MSDU_M     0x7ffe0000
 #define HTT_PPDU_STATS_FLUSH_TLV_NUM_MSDU_S             17
 
 #define HTT_PPDU_STATS_FLUSH_TLV_NUM_MSDU_GET(_var) \
