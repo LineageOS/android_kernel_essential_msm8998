@@ -603,6 +603,11 @@ static int hfi_fill_codec_info(u8 *data_ptr,
 				vidc_get_hal_codec((1 << i) & codecs);
 			capability->domain =
 				vidc_get_hal_domain(HFI_VIDEO_DOMAIN_DECODER);
+			if (codec_count == VIDC_MAX_DECODE_SESSIONS) {
+				dprintk(VIDC_ERR,
+					"Max supported decoder sessions reached");
+				break;
+			}
 		}
 	}
 	codecs = sys_init_done->enc_codec_supported;
@@ -614,6 +619,11 @@ static int hfi_fill_codec_info(u8 *data_ptr,
 				vidc_get_hal_codec((1 << i) & codecs);
 			capability->domain =
 				vidc_get_hal_domain(HFI_VIDEO_DOMAIN_ENCODER);
+			if (codec_count == VIDC_MAX_SESSIONS) {
+				dprintk(VIDC_ERR,
+					"Max supported sessions reached");
+				break;
+			}
 		}
 	}
 	sys_init_done->codec_count = codec_count;
@@ -1676,13 +1686,9 @@ static int hfi_process_session_rel_buf_done(u32 device_id,
 	cmd_done.size = sizeof(struct msm_vidc_cb_cmd_done);
 	cmd_done.session_id = (void *)(uintptr_t)pkt->session_id;
 	cmd_done.status = hfi_map_err_status(pkt->error_type);
-	if (pkt->rg_buffer_info) {
-		cmd_done.data.buffer_info =
-			*(struct hal_buffer_info *)pkt->rg_buffer_info;
-		cmd_done.size = sizeof(struct hal_buffer_info);
-	} else {
-		dprintk(VIDC_ERR, "invalid payload in rel_buff_done\n");
-	}
+	cmd_done.data.buffer_info =
+		*(struct hal_buffer_info *)pkt->rg_buffer_info;
+	cmd_done.size = sizeof(struct hal_buffer_info);
 
 	*info = (struct msm_vidc_cb_info) {
 		.response_type =  HAL_SESSION_RELEASE_BUFFER_DONE,
