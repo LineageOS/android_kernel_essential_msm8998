@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "88a15f94_efa92e8e",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 11801
+      },
+      "writtenOn": "2019-07-20T14:06:54Z",
+      "side": 1,
+      "message": "Fix double space after \"ABS_BRAKE\" please",
+      "revId": "a4214353918afe85e7c1184f5bee811ad3fd8d1e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
