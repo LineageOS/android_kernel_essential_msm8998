@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3286528e_2908ff52",
+        "filename": "drivers/tty/serial/msm_serial_hs.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2019-07-30T04:55:50Z",
+      "side": 1,
+      "message": "Why do this unconditionally? Don\u0027t you want the pm_runtime_enabled check?",
+      "range": {
+        "startLine": 408,
+        "startChar": 1,
+        "endLine": 408,
+        "endChar": 39
+      },
+      "revId": "92c7d6a8ce8220c23187c311f91dea871523d3f2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a530a594_ae4b3aff",
+        "filename": "drivers/tty/serial/msm_serial_hs.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1388,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2019-07-30T04:55:50Z",
+      "side": 1,
+      "message": "need one more level of indent here",
+      "range": {
+        "startLine": 1388,
+        "startChar": 2,
+        "endLine": 1388,
+        "endChar": 13
+      },
+      "revId": "92c7d6a8ce8220c23187c311f91dea871523d3f2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ee6eab8_7e101520",
+        "filename": "drivers/tty/serial/msm_serial_hs.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3330,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2019-07-30T04:55:50Z",
+      "side": 1,
+      "message": "space/newline after the opening of the comment",
+      "revId": "92c7d6a8ce8220c23187c311f91dea871523d3f2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
