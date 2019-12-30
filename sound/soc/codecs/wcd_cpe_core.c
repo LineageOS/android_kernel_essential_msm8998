@@ -2636,6 +2636,8 @@ static int wcd_cpe_send_lsm_cal(
 
 	hdr = (struct cmi_hdr *) inb_msg;
 
+	WCD_CPE_GRAB_LOCK(&session->lsm_lock, "lsm");
+
 	rc = fill_lsm_cmd_header_v0_inband(hdr, session->id,
 			lsm_cal->cal_data.size,
 			CPE_LSM_SESSION_CMD_SET_PARAMS);
@@ -2655,6 +2657,8 @@ static int wcd_cpe_send_lsm_cal(
 			__func__, rc);
 
 free_msg:
+	WCD_CPE_REL_LOCK(&session->lsm_lock, "lsm");
+
 	kfree(inb_msg);
 
 unlock_cal_mutex:
