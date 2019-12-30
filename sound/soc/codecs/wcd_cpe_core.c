@@ -2205,6 +2205,9 @@ static int wcd_cpe_cmi_send_lsm_msg(
 	ret = wait_for_completion_timeout(&session->cmd_comp,
 					  CMI_CMD_TIMEOUT);
 	if (ret > 0) {
+		/* Allow DSP to process command */
+		usleep_range(25000, 30000);
+
 		pr_debug("%s: command 0x%x, received response 0x%x\n",
 			__func__, hdr->opcode, session->cmd_err_code);
 		if (session->cmd_err_code == CMI_SHMEM_ALLOC_FAILED)
