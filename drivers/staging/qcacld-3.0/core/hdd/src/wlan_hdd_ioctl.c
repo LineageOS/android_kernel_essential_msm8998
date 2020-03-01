@@ -1055,6 +1055,11 @@ hdd_sendactionframe(hdd_adapter_t *adapter, const uint8_t *bssid,
 	struct cfg80211_mgmt_tx_params params;
 #endif
 
+	if (payload_len < sizeof(tSirMacVendorSpecificFrameHdr)) {
+		hdd_warn("Invalid payload length: %d", payload_len);
+		return -EINVAL;
+	}
+
 	if (QDF_STA_MODE != adapter->device_mode) {
 		hdd_warn("Unsupported in mode %s(%d)",
 			 hdd_device_mode_to_string(adapter->device_mode),
@@ -2323,9 +2328,10 @@ static int hdd_set_dwell_time(hdd_adapter_t *adapter, uint8_t *command)
 	sme_get_config_param(hHal, sme_config);
 
 	if (strncmp(command, "SETDWELLTIME ACTIVE MAX", 23) == 0) {
-		if (drv_cmd_validate(command, 23))
-			return -EINVAL;
-
+		if (drv_cmd_validate(command, 23)) {
+			retval = -EINVAL;
+			goto free;
+		}
 		value = value + 24;
 		temp = kstrtou32(value, 10, &val);
 		if (temp != 0 || val < CFG_ACTIVE_MAX_CHANNEL_TIME_MIN ||
@@ -2338,8 +2344,10 @@ static int hdd_set_dwell_time(hdd_adapter_t *adapter, uint8_t *command)
 		sme_config->csrConfig.nActiveMaxChnTime = val;
 		sme_update_config(hHal, sme_config);
 	} else if (strncmp(command, "SETDWELLTIME ACTIVE MIN", 23) == 0) {
-		if (drv_cmd_validate(command, 23))
-			return -EINVAL;
+		if (drv_cmd_validate(command, 23)) {
+			retval = -EINVAL;
+			goto free;
+		}
 
 		value = value + 24;
 		temp = kstrtou32(value, 10, &val);
@@ -2353,8 +2361,10 @@ static int hdd_set_dwell_time(hdd_adapter_t *adapter, uint8_t *command)
 		sme_config->csrConfig.nActiveMinChnTime = val;
 		sme_update_config(hHal, sme_config);
 	} else if (strncmp(command, "SETDWELLTIME PASSIVE MAX", 24) == 0) {
-		if (drv_cmd_validate(command, 24))
-			return -EINVAL;
+		if (drv_cmd_validate(command, 24)) {
+			retval = -EINVAL;
+			goto free;
+		}
 
 		value = value + 25;
 		temp = kstrtou32(value, 10, &val);
@@ -2368,8 +2378,10 @@ static int hdd_set_dwell_time(hdd_adapter_t *adapter, uint8_t *command)
 		sme_config->csrConfig.nPassiveMaxChnTime = val;
 		sme_update_config(hHal, sme_config);
 	} else if (strncmp(command, "SETDWELLTIME PASSIVE MIN", 24) == 0) {
-		if (drv_cmd_validate(command, 24))
-			return -EINVAL;
+		if (drv_cmd_validate(command, 24)) {
+			retval = -EINVAL;
+			goto free;
+		}
 
 		value = value + 25;
 		temp = kstrtou32(value, 10, &val);
@@ -2383,8 +2395,10 @@ static int hdd_set_dwell_time(hdd_adapter_t *adapter, uint8_t *command)
 		sme_config->csrConfig.nPassiveMinChnTime = val;
 		sme_update_config(hHal, sme_config);
 	} else if (strncmp(command, "SETDWELLTIME", 12) == 0) {
-		if (drv_cmd_validate(command, 12))
-			return -EINVAL;
+		if (drv_cmd_validate(command, 12)) {
+			retval = -EINVAL;
+			goto free;
+		}
 
 		value = value + 13;
 		temp = kstrtou32(value, 10, &val);
@@ -7169,7 +7183,7 @@ static void disconnect_sta_and_stop_sap(hdd_context_t *hdd_ctx)
 	if (!hdd_ctx)
 		return;
 
-	wlan_hdd_disable_channels(hdd_ctx);
+	hdd_check_and_disconnect_sta_on_invalid_channel(hdd_ctx);
 
 	status = hdd_get_front_adapter(hdd_ctx, &adapter_node);
 	while (adapter_node && (status == QDF_STATUS_SUCCESS)) {
@@ -7250,13 +7264,11 @@ static int hdd_parse_disable_chan_cmd(hdd_adapter_t *adapter, uint8_t *ptr)
 	hdd_debug("Number of channel to disable are: %d", temp_int);
 
 	if (!temp_int) {
-		if (!wlan_hdd_restore_channels(hdd_ctx)) {
-			/*
-			 * Free the cache channels only when the command is
-			 * received with num channels as 0
-			 */
-			wlan_hdd_free_cache_channels(hdd_ctx);
-		}
+		/*
+		 * Restore and Free the cache channels when the command is
+		 * received with num channels as 0
+		 */
+		wlan_hdd_restore_channels(hdd_ctx);
 		return 0;
 	}
 
@@ -7356,11 +7368,16 @@ static int hdd_parse_disable_chan_cmd(hdd_adapter_t *adapter, uint8_t *ptr)
 		ret = 0;
 	}
 
-	if (!is_command_repeated && hdd_ctx->config->disable_channel)
-		disconnect_sta_and_stop_sap(hdd_ctx);
 mem_alloc_failed:
 
 	qdf_mutex_release(&hdd_ctx->cache_channel_lock);
+	if (!is_command_repeated && hdd_ctx->original_channels) {
+		ret = wlan_hdd_disable_channels(hdd_ctx);
+		if (ret)
+			return ret;
+		disconnect_sta_and_stop_sap(hdd_ctx);
+	}
+
 	EXIT();
 
 	return ret;

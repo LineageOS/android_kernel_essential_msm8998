@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2019 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -55,6 +55,7 @@
 #include <cds_utils.h>
 #include "pld_common.h"
 #include "wlan_hdd_regulatory.h"
+#include "wlan_hdd_power.h"
 
 #include "wma.h"
 #ifdef WLAN_DEBUG
@@ -87,6 +88,11 @@
 
 #define SAP_24GHZ_CH_COUNT (14)
 #define ACS_SCAN_EXPIRY_TIMEOUT_S 4
+
+/* Defines the BIT position of HT caps is support mode field of stainfo */
+#define HDD_HT_CAPS_PRESENT 0
+/* Defines the BIT position of VHT caps is support mode field of stainfo */
+#define HDD_VHT_CAPS_PRESENT 1
 
 /*
  * 11B, 11G Rate table include Basic rate and Extended rate
@@ -1486,10 +1492,14 @@ static void hdd_fill_station_info(hdd_adapter_t *pHostapdAdapter,
 	if (event->vht_caps.present) {
 		stainfo->vht_present = true;
 		hdd_copy_vht_caps(&stainfo->vht_caps, &event->vht_caps);
+		stainfo->support_mode |=
+				(stainfo->vht_present << HDD_VHT_CAPS_PRESENT);
 	}
 	if (event->ht_caps.present) {
 		stainfo->ht_present = true;
 		hdd_copy_ht_caps(&stainfo->ht_caps, &event->ht_caps);
+		stainfo->support_mode |=
+				(stainfo->ht_present << HDD_HT_CAPS_PRESENT);
 	}
 
 	/* Initialize DHCP info */
@@ -7755,7 +7765,7 @@ static inline int wlan_hdd_set_udp_resp_offload(hdd_adapter_t *padapter,
 }
 #endif
 
-static void hdd_check_and_disconnect_sta_on_invalid_channel(
+void hdd_check_and_disconnect_sta_on_invalid_channel(
 		hdd_context_t *hdd_ctx)
 {
 	hdd_adapter_t *sta_adapter;
@@ -7860,13 +7870,11 @@ int wlan_hdd_restore_channels(hdd_context_t *hdd_ctx)
 		 * Restore the orginal states of the channels
 		 * only if we have cached non zero values
 		 */
-		if (cache_chann->channel_info[i].reg_status)
-			cds_set_channel_state(rf_channel,
-					      cache_chann->
-						channel_info[i].reg_status);
+		cds_set_channel_state(rf_channel,
+				      cache_chann->
+				      channel_info[i].reg_status);
 
-		if (cache_chann->channel_info[i].wiphy_status && wiphy_channel)
-			wiphy_channel->flags =
+		wiphy_channel->flags =
 				cache_chann->channel_info[i].wiphy_status;
 	}
 
@@ -7875,6 +7883,12 @@ int wlan_hdd_restore_channels(hdd_context_t *hdd_ctx)
 	status = sme_update_channel_list(hdd_ctx->hHal);
 	if (status)
 		hdd_err("Can't Restore channel list");
+	else
+		/*
+		 * Free the cache channels when the
+		 * disabled channels are restored
+		 */
+		wlan_hdd_free_cache_channels(hdd_ctx);
 	EXIT();
 
 	return 0;
@@ -7987,7 +8001,6 @@ int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
 	bool disable_fw_tdls_state = false;
 	uint8_t ignore_cac = 0;
 	uint8_t beacon_fixed_len;
-	hdd_adapter_t *sta_adapter;
 
 	ENTER();
 
@@ -8021,12 +8034,7 @@ int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
 	 * disconnect the STA interface first if connection or key exchange is
 	 * in progress and then start SAP interface.
 	 */
-	sta_adapter = hdd_get_sta_connection_in_progress(pHddCtx);
-	if (sta_adapter) {
-		hdd_debug("Disconnecting STA with session id: %d",
-			  sta_adapter->sessionId);
-		wlan_hdd_disconnect(sta_adapter, eCSR_DISCONNECT_REASON_DEAUTH);
-	}
+	hdd_abort_ongoing_sta_connection(pHddCtx);
 
 	/*
 	 * Reject start bss if reassoc in progress on any adapter.
@@ -8075,18 +8083,6 @@ int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
 		if (cds_is_force_scc())
 			hdd_check_and_disconnect_sta_on_invalid_channel(
 								       pHddCtx);
-	}
-
-	if (pHostapdAdapter->device_mode == QDF_SAP_MODE &&
-	    !iniConfig->disable_channel) {
-		/*
-		 * Disable the channels received in command
-		 * SET_DISABLE_CHANNEL_LIST
-		 */
-		status = wlan_hdd_disable_channels(pHddCtx);
-		if (!QDF_IS_STATUS_SUCCESS(status))
-			hdd_err("Disable channel list fail");
-		hdd_check_and_disconnect_sta_on_invalid_channel(pHddCtx);
 	}
 
 	pConfig = &pHostapdAdapter->sessionCtx.ap.sapConfig;
@@ -8592,6 +8588,8 @@ int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
 		}
 	}
 
+	hdd_thermal_mitigation_disable(pHddCtx);
+
 	if (!cds_set_connection_in_progress(true)) {
 		hdd_err("Can't start BSS: set connnection in progress failed");
 		ret = -EINVAL;
@@ -8674,9 +8672,6 @@ exit:
 	return 0;
 
 error:
-	if (pHostapdAdapter->device_mode == QDF_SAP_MODE &&
-	    !iniConfig->disable_channel)
-		wlan_hdd_restore_channels(pHddCtx);
 	/* Revert the indoor to passive marking if START BSS fails */
 	if (iniConfig->disable_indoor_channel &&
 			pHostapdAdapter->device_mode == QDF_SAP_MODE) {
@@ -8689,6 +8684,8 @@ error:
 	qdf_atomic_set(
 		&pHostapdAdapter->sessionCtx.ap.acs_in_progress, 0);
 	wlan_hdd_undo_acs(pHostapdAdapter);
+
+	hdd_thermal_mitigation_enable(pHddCtx);
 
 enable_roaming:
 	/* Enable Roaming after start bss in case of failure */
@@ -8714,7 +8711,6 @@ static int __wlan_hdd_cfg80211_stop_ap(struct wiphy *wiphy,
 	hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
 	hdd_context_t *pHddCtx = wiphy_priv(wiphy);
 	hdd_scaninfo_t *pScanInfo = NULL;
-	hdd_adapter_t *staAdapter = NULL;
 	QDF_STATUS status = QDF_STATUS_E_FAILURE;
 	QDF_STATUS qdf_status = QDF_STATUS_E_FAILURE;
 	tSirUpdateIE updateIE;
@@ -8724,6 +8720,7 @@ static int __wlan_hdd_cfg80211_stop_ap(struct wiphy *wiphy,
 	hdd_adapter_list_node_t *pAdapterNode = NULL;
 	hdd_adapter_list_node_t *pNext = NULL;
 	tsap_Config_t *pConfig;
+	hdd_adapter_t *staAdapter;
 
 	hdd_info("enter(%s)", netdev_name(dev));
 
@@ -8771,12 +8768,7 @@ static int __wlan_hdd_cfg80211_stop_ap(struct wiphy *wiphy,
 	 * the STA and complete the SAP operation. STA will reconnect
 	 * after SAP stop is done.
 	 */
-	staAdapter = hdd_get_sta_connection_in_progress(pHddCtx);
-	if (staAdapter) {
-		hdd_debug("Disconnecting STA with session id: %d",
-			  staAdapter->sessionId);
-		wlan_hdd_disconnect(staAdapter, eCSR_DISCONNECT_REASON_DEAUTH);
-	}
+	hdd_abort_ongoing_sta_connection(pHddCtx);
 
 	if (pAdapter->device_mode == QDF_SAP_MODE) {
 		wlan_hdd_del_station(pAdapter);
@@ -8927,8 +8919,9 @@ static int __wlan_hdd_cfg80211_stop_ap(struct wiphy *wiphy,
 		global_p2p_connection_status = P2P_NOT_ACTIVE;
 	}
 #endif
-	pAdapter->sessionId = HDD_SESSION_ID_INVALID;
 	wlan_hdd_check_conc_and_update_tdls_state(pHddCtx, false);
+	hdd_thermal_mitigation_enable(pHddCtx);
+
 	EXIT();
 	return ret;
 }
