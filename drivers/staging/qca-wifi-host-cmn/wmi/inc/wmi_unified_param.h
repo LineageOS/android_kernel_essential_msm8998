@@ -2881,6 +2881,7 @@ struct ll_stats_get_params {
  * @sta_id: Per STA stats request must contain valid
  * @stats_mask: categories of stats requested
  * @session_id: wsm ts spec flag
+ * @pdev_id: PDEV id
  */
 struct pe_stats_req {
 	/* Common for all types are requests */
@@ -2890,6 +2891,7 @@ struct pe_stats_req {
 	/* categories of stats requested. look at ePEStatsMask */
 	uint32_t stats_mask;
 	uint8_t session_id;
+	uint8_t pdev_id;
 };
 
 /**
@@ -3962,12 +3964,14 @@ typedef struct {
  * @enable: Enable/Disable Thermal mitigation
  * @dc: DC
  * @dc_per_event: DC per event
+ * @num_thermal_conf: Number of thermal configurations to be sent
  * @tt_level_config: TT level config params
  */
 struct thermal_mitigation_params {
 	uint32_t enable;
 	uint32_t dc;
 	uint32_t dc_per_event;
+	uint8_t num_thermal_conf;
 	tt_level_config levelconf[THERMAL_LEVELS];
 };
 
@@ -5309,6 +5313,7 @@ typedef enum {
 	wmi_sar_get_limits_event_id,
 	wmi_roam_scan_stats_event_id,
 	wmi_wlan_sar2_result_event_id,
+	wmi_roam_pmkid_request_event_id,
 	wmi_events_max,
 } wmi_conv_event_id;
 
