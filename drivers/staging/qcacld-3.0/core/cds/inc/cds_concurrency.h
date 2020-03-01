@@ -796,6 +796,7 @@ QDF_STATUS cds_current_connections_update(uint32_t session_id,
 				enum sir_conn_update_reason);
 bool cds_is_ibss_conn_exist(uint8_t *ibss_channel);
 struct cds_conc_connection_info *cds_get_conn_info(uint32_t *len);
+
 #ifdef MPC_UT_FRAMEWORK
 QDF_STATUS cds_incr_connection_count_utfw(
 		uint32_t vdev_id, uint32_t tx_streams, uint32_t rx_streams,
@@ -916,12 +917,43 @@ QDF_STATUS cds_get_pcl_for_existing_conn(enum cds_con_mode mode,
 			uint8_t *pcl_ch, uint32_t *len,
 			uint8_t *weight_list, uint32_t weight_len,
 			bool all_matching_cxn_to_del);
+
+/**
+ * cds_get_valid_chans_from_range() - get valid channels from range
+ * @ch_list: pointer to channel list
+ * @ch_cnt: channel number of channel list
+ * @mode: device mode
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS cds_get_valid_chans_from_range(uint8_t *ch_list,
+					  uint32_t *ch_cnt,
+					  enum cds_con_mode mode);
+
 QDF_STATUS cds_get_valid_chan_weights(struct sir_pcl_chan_weights *weight,
 			enum cds_con_mode mode);
 QDF_STATUS cds_set_hw_mode_on_channel_switch(uint8_t session_id);
 void cds_set_do_hw_mode_change_flag(bool flag);
 bool cds_is_hw_mode_change_after_vdev_up(void);
 void cds_checkn_update_hw_mode_single_mac_mode(uint8_t channel);
+
+/**
+ * cds_check_and_stop_opportunistic_timer() - Stop dbs opportunistic timer
+ *
+ * Stop dbs opportunistic timer and depending on the current connections change
+ * hw_mode to single mac mode.
+ *
+ * Return: None
+ */
+void cds_check_and_stop_opportunistic_timer(void);
+
+/**
+ * cds_set_opportunistic_update() - Set opportunistic update event
+ *
+ * Return: QDF_STATUS
+ */
+QDF_STATUS cds_set_opportunistic_update(void);
+
 void cds_dump_connection_status_info(void);
 /**
  * cds_mode_specific_vdev_id() - provides the
