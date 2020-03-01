@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1550,5 +1550,66 @@ void pld_set_cc_source(struct device *dev,
 enum pld_cc_src pld_get_cc_source(struct device *dev)
 {
 	return PLD_SOURCE_CORE;
+}
+#endif
+/**
+ * pld_block_shutdown() - Block/Unblock modem shutdown
+ * @dev: device
+ * @status: status true or false
+ *
+ * This API will be called to Block/Unblock modem shutdown.
+ * True - Block shutdown
+ * False - Unblock shutdown
+ *
+ * Return: None
+ */
+void pld_block_shutdown(struct device *dev, bool status)
+{
+	enum pld_bus_type type = pld_get_bus_type(dev);
+
+	switch (type) {
+	case PLD_BUS_TYPE_SNOC:
+		pld_snoc_block_shutdown(status);
+		break;
+	default:
+		break;
+	}
+}
+
+#if defined(CONFIG_PLD_SNOC_ICNSS) && defined(CONFIG_WLAN_FW_THERMAL_MITIGATION)
+int pld_thermal_register(struct device *dev, int max_state)
+{
+	return icnss_thermal_register(dev, max_state);
+}
+
+void pld_thermal_unregister(struct device *dev)
+{
+	icnss_thermal_unregister(dev);
+}
+
+int pld_get_thermal_state(struct device *dev, uint16_t *thermal_state)
+{
+	int ret;
+	unsigned long thermal_state_t;
+
+	ret = icnss_get_curr_therm_state(dev, &thermal_state_t);
+	*thermal_state = (uint16_t)thermal_state_t;
+
+	return ret;
+}
+
+#else
+int pld_thermal_register(struct device *dev, int max_state)
+{
+	return -ENOTSUPP;
+}
+
+void pld_thermal_unregister(struct device *dev)
+{
+}
+
+int pld_get_thermal_state(struct device *dev, uint16_t *thermal_state)
+{
+	return -ENOTSUPP;
 }
 #endif

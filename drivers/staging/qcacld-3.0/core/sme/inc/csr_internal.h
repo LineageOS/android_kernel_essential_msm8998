@@ -654,6 +654,7 @@ typedef struct tagCsrConfig {
 	uint32_t edca_be_aifs;
 	bool enable_fatal_event;
 	bool vendor_vht_sap;
+	bool honour_nl_scan_policy_flags;
 	enum wmi_dwelltime_adaptive_mode scan_adaptive_dwell_mode;
 	enum wmi_dwelltime_adaptive_mode scan_adaptive_dwell_mode_nc;
 	enum wmi_dwelltime_adaptive_mode roamscan_adaptive_dwell_mode;
@@ -698,6 +699,7 @@ typedef struct tagCsrConfig {
 	uint32_t btm_max_attempt_cnt;
 	uint32_t btm_sticky_time;
 	uint32_t btm_query_bitmask;
+	bool disable_4way_hs_offload;
 } tCsrConfig;
 
 typedef struct tagCsrChannelPowerInfo {
