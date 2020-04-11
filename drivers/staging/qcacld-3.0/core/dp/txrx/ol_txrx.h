@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2019 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -48,6 +48,9 @@ int ol_txrx_peer_unref_delete(ol_txrx_peer_handle peer,
 ol_txrx_peer_handle ol_txrx_find_peer_by_addr_inc_ref(ol_txrx_pdev_handle pdev,
 						uint8_t *peer_addr,
 						uint8_t *peer_id);
+
+bool ol_txrx_mon_mgmt_process(struct mon_rx_status *rx_status,
+			      qdf_nbuf_t nbuf, uint8_t status);
 /**
  * ol_tx_desc_pool_size_hl() - allocate tx descriptor pool size for HL systems
  * @ctrl_pdev: the control pdev handle
@@ -209,4 +212,29 @@ struct ol_txrx_fw_stats_desc_t
 struct ol_txrx_stats_req_internal *ol_txrx_fw_stats_desc_get_req(struct
 	ol_txrx_pdev_t *pdev, uint8_t desc_id);
 
+/**
+ * enum pktcapture_tx_status - packet capture tx status
+ * @pktcapture_tx_status_ok: successfully sent + acked
+ * @pktcapture_tx_status_discard: discard - not sent
+ * @pktcapture_tx_status_no_ack: no_ack - sent, but no ack
+ *
+ * This enum has tx status types for packet capture mode
+ */
+enum pktcapture_tx_status {
+	pktcapture_tx_status_ok,
+	pktcapture_tx_status_discard,
+	pktcapture_tx_status_no_ack,
+};
+
+/*
+ * struct ol_mon_tx_status - tx packets info
+ * @status: tx status
+ * @tx_retry_cnt: tx retry count
+ *
+ */
+
+struct ol_mon_tx_status {
+	uint8_t status;
+	uint8_t tx_retry_cnt;
+};
 #endif /* _OL_TXRX__H_ */

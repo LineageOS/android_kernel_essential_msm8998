@@ -2163,8 +2163,14 @@ static void binder_send_failed_reply(struct binder_transaction *t,
 					&target_thread->reply_error.work);
 				wake_up_interruptible(&target_thread->wait);
 			} else {
-				WARN(1, "Unexpected reply error: %u\n",
-						target_thread->reply_error.cmd);
+				/*
+				 * Cannot get here for normal operation, but
+				 * we can if multiple synchronous transactions
+				 * are sent without blocking for responses.
+				 * Just ignore the 2nd error in this case.
+				 */
+				pr_warn("Unexpected reply error: %u\n",
+					target_thread->reply_error.cmd);
 			}
 			binder_inner_proc_unlock(target_thread->proc);
 			binder_thread_dec_tmpref(target_thread);
@@ -5028,7 +5034,9 @@ static int binder_mmap(struct file *filp, struct vm_area_struct *vma)
 		failure_string = "bad vm_flags";
 		goto err_bad_arg;
 	}
-	vma->vm_flags = (vma->vm_flags | VM_DONTCOPY) & ~VM_MAYWRITE;
+	vma->vm_flags |= VM_DONTCOPY | VM_MIXEDMAP;
+	vma->vm_flags &= ~VM_MAYWRITE;
+
 	vma->vm_ops = &binder_vm_ops;
 	vma->vm_private_data = proc;
 

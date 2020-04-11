@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2019 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -966,6 +966,14 @@ QDF_STATUS cds_post_disable(void)
 		return QDF_STATUS_E_INVAL;
 	}
 
+	if (cds_get_pktcap_mode_enable()) {
+		qdf_status = cds_close_mon_thread(gp_cds_context);
+		if (!QDF_IS_STATUS_SUCCESS(qdf_status)) {
+			cds_err("Failed to close MON thread!");
+			return QDF_STATUS_E_INVAL;
+		}
+	}
+
 	ol_txrx_pdev_pre_detach(txrx_pdev, 1);
 
 	return QDF_STATUS_SUCCESS;
@@ -1172,7 +1180,7 @@ void *cds_get_context(QDF_MODULE_ID moduleId)
 	}
 
 	if (pModContext == NULL) {
-		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_ERROR,
+		QDF_TRACE(QDF_MODULE_ID_QDF, QDF_TRACE_LEVEL_DEBUG,
 			  "%s: Module ID %i context is Null", __func__,
 			  moduleId);
 	}
@@ -3054,4 +3062,30 @@ QDF_STATUS cds_deregister_mode_change_cb(void)
 	cds_ctx->mode_change_cb = NULL;
 
 	return QDF_STATUS_SUCCESS;
+}
+
+bool cds_get_pktcap_mode_enable(void)
+{
+	hdd_context_t *hdd_ctx;
+
+	hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
+	if (!hdd_ctx) {
+		cds_err("HDD context is NULL");
+		return false;
+	}
+
+	return hdd_ctx->config->pktcap_mode_enable;
+}
+
+uint8_t cds_get_pktcapture_mode(void)
+{
+	hdd_context_t *hdd_ctx;
+
+	hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
+	if (!hdd_ctx) {
+		cds_err("HDD context is NULL");
+		return 0;
+	}
+
+	return hdd_ctx->pktcapture_mode;
 }
