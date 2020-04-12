@@ -18,14 +18,6 @@
 					mnt_flags = "ro,barrier=1";
 					fsmgr_flags = "wait,slotselect";
 				};
-				persist {
-					compatible = "android,persist";
-					dev = "/dev/block/platform/soc/1da4000.ufshc/by-name/persist";
-					type = "ext4";
-					mnt_flags = "noatime,nosuid,nodev,barrier=1";
-					fsmgr_flags = "wait";
-					status = "ok";
-				};
 			};
 		};
 	};
