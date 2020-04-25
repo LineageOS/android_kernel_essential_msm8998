@@ -4309,7 +4309,10 @@ static int ffs_init(void)
 
 	return 0;
 }
+
+#ifndef MODULE
 module_init(ffs_init);
+#endif
 
 static void __exit ffs_exit(void)
 {
