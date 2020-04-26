@@ -4299,7 +4299,7 @@ static char *ffs_prepare_buffer(const char __user *buf, size_t len)
 	return data;
 }
 
-DECLARE_USB_FUNCTION_INIT(ffs, ffs_alloc_inst, ffs_alloc);
+DECLARE_USB_FUNCTION(ffs, ffs_alloc_inst, ffs_alloc);
 
 static int ffs_init(void)
 {
