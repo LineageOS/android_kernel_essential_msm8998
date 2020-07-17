@@ -370,6 +370,12 @@ static int xhci_plat_runtime_resume(struct device *dev)
 	dev_dbg(dev, "xhci-plat runtime resume\n");
 
 	ret = xhci_resume(xhci, false);
+	if (!ret) {
+		pm_runtime_disable(dev);
+		pm_runtime_set_active(dev);
+		pm_runtime_enable(dev);
+	}
+
 	pm_runtime_mark_last_busy(dev);
 
 	return ret;
