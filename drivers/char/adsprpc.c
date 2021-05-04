@@ -1737,6 +1737,8 @@ static void fastrpc_init(struct fastrpc_apps *me)
 	me->channel[ADSP_DOMAIN_ID].secure = NON_SECURE_CHANNEL;
 	/* Set CDSP channel to non secure */
 	me->channel[CDSP_DOMAIN_ID].secure = NON_SECURE_CHANNEL;
+	/* Set SDSP channel to non secure */
+	me->channel[SDSP_DOMAIN_ID].secure = NON_SECURE_CHANNEL;
 }
 
 static int fastrpc_release_current_dsp_process(struct fastrpc_file *fl);
