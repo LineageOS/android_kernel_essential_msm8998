@@ -14,6 +14,7 @@
 #include <linux/mm.h>
 #include <linux/printk.h>
 #include <linux/string_helpers.h>
+#include <linux/pagemap.h>
 
 #include <asm/uaccess.h>
 #include <asm/page.h>
@@ -25,6 +26,9 @@ static void seq_set_overflow(struct seq_file *m)
 
 static void *seq_buf_alloc(unsigned long size)
 {
+	if (unlikely(size > MAX_RW_COUNT))
+		return NULL;
+
 	return kvmalloc(size, GFP_KERNEL);
 }
 
