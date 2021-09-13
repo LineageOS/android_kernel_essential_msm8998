@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2017,2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2017,2019,2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -585,6 +585,7 @@ static void add_profiling_buffer(struct kgsl_device *device,
 {
 	struct kgsl_mem_entry *entry;
 	struct kgsl_drawobj *drawobj = DRAWOBJ(cmdobj);
+	u64 start;
 
 	if (!(drawobj->flags & KGSL_DRAWOBJ_PROFILING))
 		return;
@@ -601,7 +602,14 @@ static void add_profiling_buffer(struct kgsl_device *device,
 			gpuaddr);
 
 	if (entry != NULL) {
-		if (!kgsl_gpuaddr_in_memdesc(&entry->memdesc, gpuaddr, size)) {
+		start = id ? (entry->memdesc.gpuaddr + offset) : gpuaddr;
+		/*
+		 * Make sure there is enough room in the object to store the
+		 * entire profiling buffer object
+		 */
+		if (!kgsl_gpuaddr_in_memdesc(&entry->memdesc, gpuaddr, size) ||
+			!kgsl_gpuaddr_in_memdesc(&entry->memdesc, start,
+				sizeof(struct kgsl_drawobj_profiling_buffer))) {
 			kgsl_mem_entry_put(entry);
 			entry = NULL;
 		}
@@ -614,13 +622,8 @@ static void add_profiling_buffer(struct kgsl_device *device,
 		return;
 	}
 
+	cmdobj->profiling_buffer_gpuaddr = start;
 	cmdobj->profiling_buf_entry = entry;
-
-	if (id != 0)
-		cmdobj->profiling_buffer_gpuaddr =
-			entry->memdesc.gpuaddr + offset;
-	else
-		cmdobj->profiling_buffer_gpuaddr = gpuaddr;
 }
 
 /**
