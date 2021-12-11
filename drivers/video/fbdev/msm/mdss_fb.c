@@ -370,6 +370,7 @@ static int mdss_fb_get_panel_xres(struct mdss_panel_info *pinfo)
 {
 	struct mdss_panel_data *pdata;
 	int xres;
+	int offset = 124;
 
 	pdata = container_of(pinfo, struct mdss_panel_data, panel_info);
 
@@ -379,7 +380,9 @@ static int mdss_fb_get_panel_xres(struct mdss_panel_info *pinfo)
 	if (pinfo->split_link_enabled)
 		xres = xres * pinfo->mipi.num_of_sublinks;
 #ifdef CONFIG_BOARD_MATA
-	return xres - 124;
+	if (!strnstr(saved_command_line, "initramfs", strlen(saved_command_line)))
+		offset -= 64;
+	return xres - offset;
 #else
 	return xres;
 #endif
