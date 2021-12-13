@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8fc0a73e_f7bdc045",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2021-12-13T21:05:46Z",
+      "side": 1,
+      "message": "\u003e Patch Set 2:\n\u003e \n\u003e this will break fastboot boot fyi.\n\nGood news then, mata\u0027s bootloader doesn\u0027t do fastboot boot lol - convenient.",
+      "revId": "8161ccd2b360125c8fb0b530806e33cc9dad775d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
