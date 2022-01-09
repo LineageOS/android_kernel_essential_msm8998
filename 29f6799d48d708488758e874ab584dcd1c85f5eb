@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4ee34896_8caedd6e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2022-01-09T16:57:22Z",
+      "side": 1,
+      "message": "FYI this revert caused crashes in certain data restriction configuration on my msm8998/sdm660 devices, I had to revert it back.",
+      "revId": "29f6799d48d708488758e874ab584dcd1c85f5eb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
