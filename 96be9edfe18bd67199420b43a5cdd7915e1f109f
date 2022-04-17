@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a66046b1_d172b8a4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2022-04-17T22:30:15Z",
+      "side": 1,
+      "message": "Full kernel to be pushed: https://github.com/npjohnson/android_kernel_essential_msm8998/commits/lineage-19.1",
+      "revId": "96be9edfe18bd67199420b43a5cdd7915e1f109f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
