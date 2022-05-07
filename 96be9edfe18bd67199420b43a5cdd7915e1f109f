@@ -33,6 +33,23 @@
       "message": "\"Virtual +2\"",
       "revId": "96be9edfe18bd67199420b43a5cdd7915e1f109f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c75439e_c79f078b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 15173
+      },
+      "writtenOn": "2022-05-07T13:53:24Z",
+      "side": 1,
+      "message": "First set of comments (there will be more):\n- There is zero explantion for these reverts (I can guess, but reverts must have a reason): 870c2b9a31c3^..a9a4751f823d. Not to mention that if it\u0027s really to get the state \"back to 4.9\" or something, it could be one squashed revert with a good commit message and list of changes being reverted.\n- There is zero explanation for 6a6f84d2b792 (\"bpf: move bpf_map_show_fdinfo to match upstream location\")\n- There is zero explanation for 80f0b6c98064 (\"arm64: bpf_jit_comp: drop artifact\")\n- There is zero explanation for ecbf87bea8c5 (\"remove leftovers from 6ea07b4590d3174a53303\")\n- There is zero explanation for 4379fad493b5 (\"cgroup: replace out_idr_free with actual code\")\n- There is zero explanation for f63bf206d2ce (\"net: take compile fix from 4.9\")\n- There is zero explanation for 92ef6a0c2c39 (\"Revert \"cgroup: Disable IRQs while holding css_set_lock\"\")\n- There is zero explanation for 2a1240b810ad (\"Revert \"net/compat: Add missing sock updates for SCM_RIGHTS\"\")\n",
+      "revId": "96be9edfe18bd67199420b43a5cdd7915e1f109f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
