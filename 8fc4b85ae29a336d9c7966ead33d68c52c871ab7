@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c0a169bb_ca06256d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 15173
+      },
+      "writtenOn": "2022-05-15T16:17:41Z",
+      "side": 1,
+      "message": "This was reverted in the \"standard\" backport chain, but never added back. It exists in 4.9",
+      "revId": "8fc4b85ae29a336d9c7966ead33d68c52c871ab7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
