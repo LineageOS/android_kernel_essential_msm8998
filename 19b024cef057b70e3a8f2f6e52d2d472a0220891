@@ -16,6 +16,24 @@
       "message": "Wrong authorship",
       "revId": "19b024cef057b70e3a8f2f6e52d2d472a0220891",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "20df12bb_360100ce",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2022-11-09T01:42:13Z",
+      "side": 1,
+      "message": "done - sorry - process of reverting it by hand made me miss my usual authorship pass.",
+      "parentUuid": "a3aad955_545e9940",
+      "revId": "19b024cef057b70e3a8f2f6e52d2d472a0220891",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
