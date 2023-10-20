@@ -107,7 +107,7 @@ static void cxd224x_workqueue(struct work_struct *work)
 	gpio_set_value(cxd224x_dev->gpio->rst_gpio, ~CXDNFC_RST_ACTIVE & 0x1);
 }
 
-static int __init init_wqueue(struct cxd224x_dev *cxd224x_dev)
+static int init_wqueue(struct cxd224x_dev *cxd224x_dev)
 {
 	INIT_WORK(&cxd224x_dev->qmsg, cxd224x_workqueue);
 	cxd224x_dev->wqueue = create_workqueue("cxd224x-i2c_wrokq");
