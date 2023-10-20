@@ -653,13 +653,10 @@
 	qcom,wave-shape = "sine";
 	qcom,play-mode = "buffer";
 	qcom,vmax-mv = <2750>;
-	qcom,int-pwm-freq-khz = <253>;
-	qcom,brake-pattern = [02 01 00 00];
+	qcom,brake-pattern = <0x2 0x1 0x0 0x0>;
 	qcom,wave-samples = [3e 3e 3e 3e 3e 3e 3e 3e];
-	qcom,wave-rep-cnt = <1>;
-	qcom,wave-samp-rep-cnt = <1>;
-	qcom,drive-period-code-min-limit-percent-variation = <20>;
-	qcom,drive-period-code-max-limit-percent-variation = <20>;
+	qcom,drive-period-code-min-variation-pct = <20>;
+	qcom,drive-period-code-max-variation-pct = <20>;
 };
 
 &pm8998_vadc {
