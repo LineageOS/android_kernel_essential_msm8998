@@ -1001,7 +1001,7 @@ int __init msm_mpm_device_init(void)
 {
 	return platform_driver_register(&msm_mpm_dev_driver);
 }
-arch_initcall(msm_mpm_device_init);
+subsys_initcall(msm_mpm_device_init);
 
 void of_mpm_init(void)
 {
