@@ -16,7 +16,6 @@
 #include "msm8998-pinctrl-mata.dtsi"
 #include "msm8998-camera-sensor-mata.dtsi"
 #include "../qcom/msm8998-mdss-panels.dtsi"
-#include "msm8998-mata-lineage.dtsi"
 #include "dsi-panel-nt35597-dsc-wqxga-cmd-mata.dtsi"
 #include "dsi-panel-otm2503b-wqxga-cmd.dtsi"
 
