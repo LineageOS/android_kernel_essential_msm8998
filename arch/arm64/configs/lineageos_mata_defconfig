@@ -1,5 +1,8 @@
+<<<<<<< HEAD   (7c4aae ASoC: msm-pcm-voip: Avoid integer underflow)
 CONFIG_LOCALVERSION="-lineage"
 CONFIG_LOCALVERSION_AUTO=y
+=======
+>>>>>>> CHANGE (6213f9 ARM64: defconfigs: Stop setting local version to "-lineage")
 # CONFIG_USELIB is not set
 CONFIG_AUDIT=y
 # CONFIG_AUDITSYSCALL is not set
